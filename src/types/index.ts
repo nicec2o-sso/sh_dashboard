@@ -1,149 +1,50 @@
+/**
+ * 공통 타입 정의 및 통합 Export
+ * 
+ * 이 파일은 프로젝트 전체에서 사용되는 모든 타입을 한 곳에서 import할 수 있도록 재export합니다.
+ * 각 도메인별로 분리된 타입 파일들을 통합하여 제공합니다.
+ * 
+ * @example
+ * ```typescript
+ * // 개별 import 대신
+ * import { Node } from '@/types/node.types';
+ * import { Api } from '@/types/api.types';
+ * 
+ * // 통합 import 사용 가능
+ * import { Node, Api } from '@/types';
+ * ```
+ */
 
-// ==================== 도메인 타입 정의 ====================
+// Node 도메인 타입
+export type {
+  Node,
+  CreateNodeDto,
+  UpdateNodeDto
+} from './node.types';
 
-export interface Node {
-  id: number;
-  name: string;
-  host: string;
-  port: number;
-  status: 'healthy' | 'warning' | 'error';
-  description?: string;
-  createdAt?: string;
-}
+// NodeGroup 도메인 타입
+export type {
+  NodeGroup,
+  CreateNodeGroupDto,
+  UpdateNodeGroupDto
+} from './node-group.types';
 
-export interface NodeGroup {
-  id: number;
-  name: string;
-  description: string;
-  nodeIds: number[];
-  createdAt?: string;
-}
+// API 도메인 타입
+export type {
+  Api,
+  ApiParameter,
+  ApiExecutionResult,
+  CreateApiDto,
+  UpdateApiDto,
+  ManageApiParameterDto,
+  ValidateApiParametersDto,
+  ExecuteApiDto
+} from './api.types';
 
-export interface ApiParameter {
-  id: number;
-  name: string;
-  type: 'query' | 'body';
-  required: boolean;
-  description?: string;
-}
-
-export interface Api {
-  id: number;
-  name: string;
-  uri: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  apiParameterIds: number[];
-  createdAt?: string;
-}
-
-export interface SyntheticTest {
-  id: number;
-  name: string;
-  targetId: number;
-  targetType: 'node' | 'group';
-  apiId: number;
-  apiParameterValues?: Record<number, string>; // apiParameterId -> value
-  tags: string[];
-  intervalSeconds: number;
-  alertThresholdMs: number;
-  createdAt?: string;
-}
-
-export interface SyntheticTestHistory {
-  id: number;
-  syntheticTestId: number;
-  nodeId: number;
-  statusCode: number;
-  success: boolean;
-  responseTimeMs: number;
-  executedAt: string;
-  input: string; // JSON 문자열 형태
-  output?: string; // JSON 문자열 형태
-  errorMessage?: string; 
-}
-
-export interface ApiExecutionResult {
-  nodeId: number;
-  nodeName: string;
-  responseTimeMs: number;
-  success: boolean;
-  statusCode: number;
-  data?: any;
-}
-
-// ==================== DTO 타입 ====================
-
-export interface CreateNodeDto {
-  name: string;
-  host: string;
-  port: number;
-}
-
-export interface UpdateNodeDto {
-  name?: string;
-  host?: string;
-  port?: number;
-  status?: 'healthy' | 'warning' | 'error';
-}
-
-export interface CreateNodeGroupDto {
-  name: string;
-  description: string;
-  nodeIds: number[];
-}
-
-export interface UpdateNodeGroupDto {
-  name?: string;
-  description?: string;
-  nodeIds?: number[];
-}
-export interface CreateApiDto {
-  name: string;
-  uri: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  parameters: ApiParameter[];
-}
-
-export interface UpdateApiDto {
-  name?: string;
-  uri?: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  targetId?: number;
-  // 파라미터 상세 정보 (수정 시 파라미터 객체 전체를 받음)
-  parameters?: ApiParameter[]; 
-}
-
-// 기존 로직의 add/removeParameterToApi 함수를 위해 DTO를 추가로 정의했습니다.
-export interface ManageApiParameterDto {
-  parameterId: string;
-}
-
-// API 파라미터 검증을 위한 DTO
-export interface ValidateApiParametersDto {
-  providedParams: Record<string, string>;
-}
-
-export interface CreateSyntheticTestDto {
-  name: string;
-  targetId: number;
-  targetType: 'node' | 'group';
-  apiId: number;
-  tags: string[];
-  intervalSeconds: number;
-  alertThresholdMs: number;
-}
-
-export interface UpdateSyntheticTestDto {
-  name?: string;
-  targetId?: number;
-  targetType?: 'node' | 'group';
-  apiId?: number;
-  tags?: string[];
-  intervalSeconds?: number;
-  alertThresholdMs?: number;
-}
-
-export interface ExecuteApiDto {
-  apiId: number;
-  parameters?: Record<string, any>;
-}
+// SyntheticTest 도메인 타입
+export type {
+  SyntheticTest,
+  SyntheticTestHistory,
+  CreateSyntheticTestDto,
+  UpdateSyntheticTestDto
+} from './synthetic-test.types';
