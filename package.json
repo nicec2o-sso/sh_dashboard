@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 8080",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:db": "node test-altibase-connection.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -45,12 +46,13 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.555.0",
-    "mysql2": "^3.16.0",
     "next": "^16.0.7",
     "next-themes": "^0.4.6",
     "node-odbc-altibase": "^1.0.1",
     "odbc": "^2.4.9",
+    "oracledb": "^6.10.0",
     "postcss": "^8.5.6",
+    "python3": "^0.0.1",
     "react": "19.2.0",
     "react-day-picker": "^9.12.0",
     "react-dom": "19.2.0",
@@ -70,6 +72,8 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.6",
+    "ignore-loader": "^0.1.2",
+    "node-loader": "^2.1.0",
     "tailwindcss": "^4.1.17",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5"

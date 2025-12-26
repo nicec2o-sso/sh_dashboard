@@ -1,29 +1,27 @@
 /**
- * 통합 데이터베이스 연결 관리
+ * Oracle 데이터베이스 연결 관리 (단일 DB 버전)
  * 
- * 환경변수 USE_DATABASE에 따라 Altibase 또는 MySQL 중 하나를 선택하여 사용합니다.
- * 
- * 지원 데이터베이스:
- * - altibase: Altibase 데이터베이스
- * - mysql: MySQL 데이터베이스
+ * 이 파일은 Oracle DB와의 연결을 관리합니다.
+ * ALTIBASE, MySQL 지원이 제거되고 Oracle만 사용합니다.
  * 
  * 환경변수 설정 (.env.local):
+ * 
+ * Wallet 방식 (Autonomous Database - 현재):
  * ```
- * USE_DATABASE=mysql  # 또는 altibase
+ * ORACLE_WALLET_LOCATION=/path/to/wallet
+ * ORACLE_WALLET_PASSWORD=your_wallet_password
+ * ORACLE_CONNECTION_STRING=mydb_high
+ * ORACLE_USER=admin
+ * ORACLE_PASSWORD=your_password
+ * ```
  * 
- * # MySQL 설정 (USE_DATABASE=mysql인 경우)
- * MYSQL_HOST=localhost
- * MYSQL_PORT=3306
- * MYSQL_USER=root
- * MYSQL_PASSWORD=password
- * MYSQL_DATABASE=mydb
- * 
- * # Altibase 설정 (USE_DATABASE=altibase인 경우)
- * ALTIBASE_HOST=localhost
- * ALTIBASE_PORT=20300
- * ALTIBASE_USER=sys
- * ALTIBASE_PASSWORD=manager
- * ALTIBASE_DATABASE=mydb
+ * 기본 연결 방식 (추후 전환 예정):
+ * ```
+ * ORACLE_HOST=localhost
+ * ORACLE_PORT=1521
+ * ORACLE_SERVICE_NAME=ORCLPDB1
+ * ORACLE_USER=your_user
+ * ORACLE_PASSWORD=your_password
  * ```
  * 
  * 사용 방법:
@@ -33,189 +31,70 @@
  * // 초기화 (애플리케이션 시작 시 한 번)
  * await db.initialize();
  * 
- * // 쿼리 실행
- * const nodes = await db.query('SELECT * FROM nodes');
+ * // 쿼리 실행 (Named 바인딩)
+ * const nodes = await db.query('SELECT * FROM NODES WHERE ID = :id', { id: 1 });
+ * 
+ * // 쿼리 실행 (Positional 바인딩)
+ * const nodes = await db.query('SELECT * FROM NODES WHERE ID = :1', [1]);
  * 
  * // 트랜잭션
  * await db.transaction(async (conn) => {
- *   await conn.execute('INSERT INTO nodes ...');
- *   await conn.execute('UPDATE nodes ...');
+ *   await conn.execute('INSERT INTO NODES ...');
+ *   await conn.execute('UPDATE NODES ...');
  * });
  * ```
  */
 
-import { db as altibaseDb } from './altibase';
-import { db as mysqlDb } from './mysql';
+import { db as oracleDb } from './oracle';
 
 /**
- * 데이터베이스 타입
+ * 데이터베이스 타입 (Oracle 고정)
  */
-export type DatabaseType = 'altibase' | 'mysql';
+export type DatabaseType = 'oracle';
 
 /**
  * 데이터베이스 인터페이스
- * 
- * Altibase와 MySQL 모두 이 인터페이스를 구현합니다.
  */
 export interface IDatabase {
   initialize(): Promise<void>;
-  query<T = any>(sql: string, params?: any[]): Promise<T[]>;
+  query<T = any>(sql: string, params?: any[] | Record<string, any>): Promise<T[]>;
   transaction<T>(callback: (connection: any) => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }
 
 /**
- * 통합 데이터베이스 연결 클래스
+ * 데이터베이스 타입 반환 (항상 'oracle')
  * 
- * 환경변수에 따라 적절한 데이터베이스 인스턴스를 반환합니다.
- */
-class DatabaseManager {
-  private static instance: DatabaseManager;
-  private dbType: DatabaseType;
-  private dbInstance: IDatabase;
-
-  /**
-   * private 생성자 - 싱글톤 패턴
-   */
-  private constructor() {
-    // 환경변수에서 데이터베이스 타입 읽기
-    const envDbType = process.env.USE_DATABASE?.toLowerCase() || 'mysql';
-    
-    // 유효한 데이터베이스 타입 확인
-    if (envDbType !== 'altibase' && envDbType !== 'mysql') {
-      console.warn(`[DatabaseManager] Invalid USE_DATABASE value: ${envDbType}, defaulting to mysql`);
-      this.dbType = 'mysql';
-    } else {
-      this.dbType = envDbType as DatabaseType;
-    }
-
-    // 적절한 데이터베이스 인스턴스 선택
-    this.dbInstance = this.dbType === 'altibase' ? altibaseDb : mysqlDb;
-
-    console.log(`[DatabaseManager] 🗄️  Selected database: ${this.dbType.toUpperCase()}`);
-  }
-
-  /**
-   * DatabaseManager 인스턴스 반환
-   * 
-   * @returns DatabaseManager 싱글톤 인스턴스
-   */
-  public static getInstance(): DatabaseManager {
-    if (!DatabaseManager.instance) {
-      DatabaseManager.instance = new DatabaseManager();
-    }
-    return DatabaseManager.instance;
-  }
-
-  /**
-   * 현재 사용 중인 데이터베이스 타입 반환
-   * 
-   * @returns 'altibase' 또는 'mysql'
-   */
-  public getType(): DatabaseType {
-    return this.dbType;
-  }
-
-  /**
-   * 데이터베이스 연결 초기화
-   * 
-   * 애플리케이션 시작 시 한 번 호출합니다.
-   * 
-   * @throws 초기화 실패 시 에러 발생
-   */
-  public async initialize(): Promise<void> {
-    try {
-      console.log(`[DatabaseManager] Initializing ${this.dbType.toUpperCase()} connection...`);
-      await this.dbInstance.initialize();
-      console.log(`[DatabaseManager] ✅ ${this.dbType.toUpperCase()} connection initialized successfully`);
-    } catch (error) {
-      console.error(`[DatabaseManager] ❌ Failed to initialize ${this.dbType.toUpperCase()}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * SQL 쿼리 실행
-   * 
-   * @param sql - 실행할 SQL 쿼리
-   * @param params - 쿼리 파라미터 (선택사항)
-   * @returns 쿼리 실행 결과 배열
-   * 
-   * @example
-   * ```typescript
-   * const nodes = await db.query('SELECT * FROM nodes WHERE id = ?', [1]);
-   * ```
-   */
-  public async query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-    return await this.dbInstance.query<T>(sql, params);
-  }
-
-  /**
-   * 트랜잭션 실행
-   * 
-   * 여러 쿼리를 하나의 트랜잭션으로 실행합니다.
-   * 
-   * @param callback - 트랜잭션 내에서 실행할 함수
-   * @returns 콜백 함수의 반환값
-   * 
-   * @example
-   * ```typescript
-   * await db.transaction(async (conn) => {
-   *   await conn.execute('INSERT INTO nodes ...');
-   *   await conn.execute('UPDATE nodes ...');
-   * });
-   * ```
-   */
-  public async transaction<T>(callback: (connection: any) => Promise<T>): Promise<T> {
-    return await this.dbInstance.transaction(callback);
-  }
-
-  /**
-   * 데이터베이스 연결 종료
-   * 
-   * 애플리케이션 종료 시 호출합니다.
-   */
-  public async close(): Promise<void> {
-    console.log(`[DatabaseManager] Closing ${this.dbType.toUpperCase()} connection...`);
-    await this.dbInstance.close();
-    console.log(`[DatabaseManager] ✅ ${this.dbType.toUpperCase()} connection closed`);
-  }
-}
-
-/**
- * 데이터베이스 매니저 싱글톤 인스턴스 export
- * 
- * 애플리케이션 전체에서 이 인스턴스를 사용합니다.
- * 
- * @example
- * ```typescript
- * import { db, getDatabaseType } from '@/lib/database';
- * 
- * // 현재 사용 중인 DB 확인
- * console.log('Using database:', getDatabaseType());
- * 
- * // 쿼리 실행
- * const nodes = await db.query('SELECT * FROM nodes');
- * ```
- */
-export const db = DatabaseManager.getInstance();
-
-/**
- * 현재 사용 중인 데이터베이스 타입 반환
- * 
- * @returns 'altibase' 또는 'mysql'
+ * @returns 'oracle'
  */
 export function getDatabaseType(): DatabaseType {
-  return db.getType();
+  return 'oracle';
 }
 
 /**
- * 데이터베이스 타입 체크 헬퍼 함수
+ * Oracle 사용 여부 확인 (항상 true)
  */
-export function isAltibase(): boolean {
-  return db.getType() === 'altibase';
+export function isOracle(): boolean {
+  return true;
 }
 
-export function isMySQL(): boolean {
-  return db.getType() === 'mysql';
+/**
+ * Altibase 사용 여부 확인 (항상 false - 제거됨)
+ */
+export function isAltibase(): boolean {
+  return false;
 }
+
+/**
+ * MySQL 사용 여부 확인 (항상 false - 제거됨)
+ */
+export function isMySQL(): boolean {
+  return false;
+}
+
+// Oracle 인스턴스를 직접 export
+export const db = oracleDb;
+
+console.log('═══════════════════════════════════════════════════════');
+console.log('[Database] 🎯 Using Oracle Database');
+console.log('═══════════════════════════════════════════════════════');

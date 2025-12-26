@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { nodeService, DATABASE_TYPE } from '@/services/serviceInitializer';
 import { CreateNodeDto } from '@/types';
+import { ensureDatabaseInitialized } from '@/middleware/dbInit';
 
 /**
  * GET /api/nodes - 모든 노드 조회
@@ -28,6 +29,9 @@ import { CreateNodeDto } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
+    // 데이터베이스 초기화 보장
+    await ensureDatabaseInitialized();
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as 'healthy' | 'warning' | 'error' | null;
     const host = searchParams.get('host');
@@ -75,6 +79,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // 데이터베이스 초기화 보장
+    await ensureDatabaseInitialized();
+
     const body: CreateNodeDto = await request.json();
 
     // 유효성 검증
