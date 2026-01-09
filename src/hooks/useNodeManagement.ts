@@ -73,7 +73,7 @@ export function useNodeManagement(): UseNodeManagementReturn {
    */
   const createNode = async (data: CreateNodeDto): Promise<Node | null> => {
     // 유효성 검증
-    if (!data.name || !data.host || !data.port) {
+    if (!data.nodeName || !data.host || !data.port) {
       alert('이름, 호스트, 포트는 필수 입력 항목입니다.');
       return null;
     }

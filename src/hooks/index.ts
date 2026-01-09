@@ -23,4 +23,4 @@ export { useApiManagement } from './useApiManagement';
 export { useApiExecution } from './useApiExecution';
 
 // 기존 hook도 포함
-export { useMobile } from './use-mobile';
+export { useIsMobile } from './use-mobile';

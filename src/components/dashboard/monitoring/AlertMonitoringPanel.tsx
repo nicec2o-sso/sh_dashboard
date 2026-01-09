@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
-import { Node, NodeGroup, SyntheticTest, SyntheticTestHistory, Api, ApiParameter } from '@/types';
+import { Node, NodeGroup, SyntheticTest, SyntheticTestHistory, Api, ApiParameter, Tag } from '@/types';
 
 interface Alert {
   testId: number;
@@ -36,6 +36,7 @@ export function AlertMonitoringPanel() {
   const [tests, setTests] = useState<SyntheticTest[]>([]);
   const [testResults, setTestResults] = useState<SyntheticTestHistory[]>([]);
   const [apis, setApis] = useState<Api[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [apiParameters, setApiParameters] = useState<Record<number, ApiParameter[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,17 +49,19 @@ export function AlertMonitoringPanel() {
   const fetchData = useCallback(async () => {
     try {
       // 먼저 기본 데이터 로드
-      const [nodesResponse, groupsResponse, testsResponse, apisResponse] = await Promise.all([
+      const [nodesResponse, groupsResponse, testsResponse, apisResponse, tagResponse] = await Promise.all([
         fetch('/api/nodes'),
         fetch('/api/node-groups'),
         fetch('/api/synthetic-tests'),
         fetch('/api/apis'),
+        fetch('/api/tags'),
       ]);
 
       const nodesData = await nodesResponse.json();
       const groupsData = await groupsResponse.json();
       const testsData = await testsResponse.json();
       const apisData = await apisResponse.json();
+      const tagData = await tagResponse.json();
 
       setNodes(nodesData.data || []);
       setNodeGroups(groupsData.data || []);
@@ -66,12 +69,14 @@ export function AlertMonitoringPanel() {
       setTests(fetchedTests);
       const fetchedApis = apisData.data || [];
       setApis(fetchedApis);
-
+      const fetchedTags = tagData.data || [];
+      setTags(fetchedTags.map((tag: any) => tag.tagName).sort() ? fetchedTags : []);
+        
       // API 파라미터 정보 로드
       const parameterPromises = fetchedApis.map((api: Api) =>
-        fetch(`/api/apis/${api.id}/parameters`)
+        fetch(`/api/apis/${api.apiId}/parameters`)
           .then(res => res.json())
-          .then(data => ({ apiId: api.id, parameters: data.data || [] }))
+          .then(data => ({ apiId: api.apiId, parameters: data.data || [] }))
       );
       
       const parameterResults = await Promise.all(parameterPromises);
@@ -84,7 +89,7 @@ export function AlertMonitoringPanel() {
       // 각 테스트의 히스토리를 병렬로 조회
       if (fetchedTests.length > 0) {
         const historyPromises = fetchedTests.map((test: SyntheticTest) =>
-          fetch(`/api/synthetic-tests/${test.id}/history`).then(res => res.json())
+          fetch(`/api/synthetic-tests/${test.syntheticTestId}/history`).then(res => res.json())
         );
 
         const historyResults = await Promise.all(historyPromises);
@@ -124,12 +129,12 @@ export function AlertMonitoringPanel() {
   }, [fetchData]);
 
   // 모든 태그 목록 계산
-  const allTags = useMemo(() => {
-    const uniqueTags = new Set(
-      tests.flatMap(test => test.tags || [])
-    );
-    return Array.from(uniqueTags).sort();
-  }, [tests]);
+  // const allTags = useMemo(() => {
+  //   const uniqueTags = new Set(
+  //     tests.flatMap(test => test.tags || [])
+  //   );
+  //   return Array.from(uniqueTags).sort();
+  // }, [tests]);
 
   const alertData = useMemo(() => {
     const alerts: Alert[] = [];
@@ -160,9 +165,33 @@ export function AlertMonitoringPanel() {
     
     // 태그 필터 (OR 조건 - 선택된 태그 중 하나라도 있으면 포함)
     if (selectedTags.length > 0) {
-      filteredTests = filteredTests.filter((test) => 
-        test.tags && test.tags.some(tag => selectedTags.includes(tag))
-      );
+      filteredTests = filteredTests.filter((test) => {
+        if (!test.tags) return false;
+        
+        let testTags: string[] = [];
+        
+        if (typeof test.tags === 'string') {
+          const trimmed = test.tags.trim();
+          if (!trimmed) return false;
+          
+          // JSON 배열인지 확인
+          if (trimmed.startsWith('[')) {
+            try {
+              testTags = JSON.parse(trimmed);
+            } catch (e) {
+              console.warn('Failed to parse tags as JSON:', trimmed);
+              return false;
+            }
+          } else {
+            // 쉼표로 구분된 문자열로 처리
+            testTags = trimmed.split(',').map(t => t.trim()).filter(t => t);
+          }
+        } else if (Array.isArray(test.tags)) {
+          testTags = test.tags;
+        }
+        
+        return testTags.some(tag => selectedTags.includes(tag));
+      });
     }
     
     // 노드 필터 (OR 조건 - 선택된 노드 중 하나라도 해당하면 포함)
@@ -171,7 +200,7 @@ export function AlertMonitoringPanel() {
         if (test.targetType === 'node') {
           return selectedNodes.includes(test.targetId);
         } else if (test.targetType === 'group') {
-          const group = nodeGroups.find(g => g.id === test.targetId);
+          const group = nodeGroups.find(g => g.nodeGroupId === test.targetId);
           return group ? group.nodeIds.some(nodeId => selectedNodes.includes(nodeId)) : false;
         }
         return false;
@@ -189,21 +218,21 @@ export function AlertMonitoringPanel() {
       // 시간 범위에 맞는 결과만 필터링
       const filteredResults = testResults.filter((r) => {
         const executedTime = new Date(r.executedAt);
-        return r.syntheticTestId === test.id && executedTime >= timeThreshold;
+        return r.syntheticTestId === test.syntheticTestId && executedTime >= timeThreshold;
       });
 
       filteredResults.forEach((result) => {
         if (result.responseTimeMs > test.alertThresholdMs) {
-          const node = nodes.find((n) => n.id === result.nodeId);
-          const api = apis.find((a) => a.id === test.apiId);
+          const node = nodes.find((n) => n.nodeId === result.nodeId);
+          const api = apis.find((a) => a.apiId === test.apiId);
 
           alerts.push({
-            testId: test.id,
-            testName: test.name,
+            testId: test.syntheticTestId,
+            testName: test.syntheticTestName,
             nodeId: result.nodeId,
-            nodeName: node?.name || 'Unknown',
+            nodeName: node?.nodeName || 'Unknown',
             apiId: test.apiId,
-            apiName: api?.name || 'Unknown',
+            apiName: api?.apiName || 'Unknown',
             apiUri: api?.uri || '',
             apiMethod: api?.method || 'GET',
             parameterValues: test.apiParameterValues || {},
@@ -239,7 +268,7 @@ export function AlertMonitoringPanel() {
   // 선택된 알럿의 테스트 정보 가져오기
   const selectedTestInfo = useMemo(() => {
     if (!selectedAlert) return null;
-    return tests.find(t => t.id === selectedAlert.testId);
+    return tests.find(t => t.syntheticTestId === selectedAlert.testId);
   }, [selectedAlert, tests]);
 
   // 선택된 테스트의 최근 히스토리 가져오기
@@ -254,8 +283,8 @@ export function AlertMonitoringPanel() {
   // 파라미터 이름 가져오기 헬퍼 함수
   const getParameterName = (apiId: number, parameterId: number): string => {
     const params = apiParameters[apiId] || [];
-    const param = params.find(p => p.id === parameterId);
-    return param?.name || `Param ${parameterId}`;
+    const param = params.find(p => p.apiParameterId === parameterId);
+    return param?.apiParameterName || `Param ${parameterId}`;
   };
 
   if (isLoading) {
@@ -329,27 +358,27 @@ export function AlertMonitoringPanel() {
               <div>
                 <Label className="text-xs text-gray-600 mb-2 block">태그</Label>
                 <div className="space-y-2 max-h-48 overflow-y-auto border rounded p-3 bg-gray-50">
-                  {allTags.length === 0 ? (
+                  {tags.length === 0 ? (
                     <div className="text-sm text-gray-500">태그 없음</div>
                   ) : (
-                    allTags.map((tag) => (
-                      <div key={tag} className="flex items-center space-x-2">
+                    tags.map((tag) => (
+                      <div key={tag.tagName} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`alert-tag-${tag}`}
-                          checked={selectedTags.includes(tag)}
+                          id={`alert-tag-${tag.tagName}`}
+                          checked={selectedTags.includes(tag.tagName)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setSelectedTags([...selectedTags, tag]);
+                              setSelectedTags([...selectedTags, tag.tagName]);
                             } else {
-                              setSelectedTags(selectedTags.filter(t => t !== tag));
+                              setSelectedTags(selectedTags.filter(t => t !== tag.tagName));
                             }
                           }}
                         />
                         <label
-                          htmlFor={`alert-tag-${tag}`}
+                          htmlFor={`alert-tag-${tag.tagName}`}
                           className="text-sm cursor-pointer"
                         >
-                          {tag}
+                          {tag.tagName}
                         </label>
                       </div>
                     ))
@@ -365,27 +394,27 @@ export function AlertMonitoringPanel() {
                     <div className="text-sm text-gray-500">노드 없음</div>
                   ) : (
                     nodes.map((node) => (
-                      <div key={node.id} className="flex items-center space-x-2">
+                      <div key={node.nodeId} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`alert-node-${node.id}`}
-                          checked={selectedNodes.includes(node.id)}
+                          id={`alert-node-${node.nodeId}`}
+                          checked={selectedNodes.includes(node.nodeId)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setSelectedNodes([...selectedNodes, node.id]);
+                              setSelectedNodes([...selectedNodes, node.nodeId]);
                             } else {
-                              setSelectedNodes(selectedNodes.filter(n => n !== node.id));
+                              setSelectedNodes(selectedNodes.filter(n => n !== node.nodeId));
                             }
                           }}
                         />
                         <label
-                          htmlFor={`alert-node-${node.id}`}
+                          htmlFor={`alert-node-${node.nodeId}`}
                           className="text-sm cursor-pointer flex-1"
                         >
                           <div className="flex items-center gap-1">
                             <Badge variant="secondary" className="text-xs font-mono">
-                              ID: {node.id}
+                              ID: {node.nodeId}
                             </Badge>
-                            <span>{node.name}</span>
+                            <span>{node.nodeName}</span>
                           </div>
                         </label>
                       </div>
@@ -402,27 +431,27 @@ export function AlertMonitoringPanel() {
                     <div className="text-sm text-gray-500">그룹 없음</div>
                   ) : (
                     nodeGroups.map((group) => (
-                      <div key={group.id} className="flex items-center space-x-2">
+                      <div key={group.nodeGroupId} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`alert-group-${group.id}`}
-                          checked={selectedGroups.includes(group.id)}
+                          id={`alert-group-${group.nodeGroupId}`}
+                          checked={selectedGroups.includes(group.nodeGroupId)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setSelectedGroups([...selectedGroups, group.id]);
+                              setSelectedGroups([...selectedGroups, group.nodeGroupId]);
                             } else {
-                              setSelectedGroups(selectedGroups.filter(g => g !== group.id));
+                              setSelectedGroups(selectedGroups.filter(g => g !== group.nodeGroupId));
                             }
                           }}
                         />
                         <label
-                          htmlFor={`alert-group-${group.id}`}
+                          htmlFor={`alert-group-${group.nodeGroupId}`}
                           className="text-sm cursor-pointer flex-1"
                         >
                           <div className="flex items-center gap-1">
                             <Badge variant="secondary" className="text-xs font-mono">
-                              ID: {group.id}
+                              ID: {group.nodeGroupId}
                             </Badge>
-                            <span>{group.name}</span>
+                            <span>{group.nodeGroupName}</span>
                           </div>
                         </label>
                       </div>
@@ -642,7 +671,7 @@ export function AlertMonitoringPanel() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-gray-600">테스트 이름</div>
-                      <div className="font-medium">{selectedTestInfo.name}</div>
+                      <div className="font-medium">{selectedTestInfo.syntheticTestName}</div>
                     </div>
                     <div>
                       <div className="text-sm text-gray-600">대상 타입</div>
@@ -655,16 +684,40 @@ export function AlertMonitoringPanel() {
                       <div className="font-medium">{selectedTestInfo.intervalSeconds}초</div>
                     </div>
                   </div>
-                  {selectedTestInfo.tags && selectedTestInfo.tags.length > 0 && (
-                    <div>
-                      <div className="text-sm text-gray-600 mb-1">태그</div>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedTestInfo.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">{tag}</Badge>
-                        ))}
+                  {selectedTestInfo.tags && (() => {
+                    let testTags: string[] = [];
+                    
+                    if (typeof selectedTestInfo.tags === 'string') {
+                      const trimmed = selectedTestInfo.tags.trim();
+                      if (trimmed) {
+                        // JSON 배열인지 확인
+                        if (trimmed.startsWith('[')) {
+                          try {
+                            testTags = JSON.parse(trimmed);
+                          } catch (e) {
+                            // JSON 파싱 실패 시 쉼표로 분리
+                            testTags = trimmed.split(',').map(t => t.trim()).filter(t => t);
+                          }
+                        } else {
+                          // 쉼표로 구분된 문자열
+                          testTags = trimmed.split(',').map(t => t.trim()).filter(t => t);
+                        }
+                      }
+                    } else if (Array.isArray(selectedTestInfo.tags)) {
+                      testTags = selectedTestInfo.tags;
+                    }
+                    
+                    return testTags.length > 0 ? (
+                      <div>
+                        <div className="text-sm text-gray-600 mb-1">태그</div>
+                        <div className="flex flex-wrap gap-1">
+                          {testTags.map((tag: string) => (
+                            <Badge key={tag} variant="secondary">{tag}</Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ) : null;
+                  })()}
                 </CardContent>
               </Card>
 
@@ -680,7 +733,7 @@ export function AlertMonitoringPanel() {
                     ) : (
                       selectedTestHistory.map((history) => (
                         <div
-                          key={history.id}
+                          key={history.syntheticTestHistoryId}
                           className={`flex items-center justify-between p-3 border rounded ${
                             history.responseTimeMs > selectedTestInfo.alertThresholdMs
                               ? 'border-orange-200 bg-orange-50'

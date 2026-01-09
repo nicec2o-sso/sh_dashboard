@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Loader2, RefreshCw, Edit, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { Api, ApiParameter } from '@/types';
+import { validateApiData } from '@/lib/clientValidation';
 
 export function ApiManagement() {
   const [apis, setApis] = useState<Api[]>([]);
@@ -28,14 +29,15 @@ export function ApiManagement() {
   
   // API 및 파라미터 폼 상태
   const [newApi, setNewApi] = useState({
-    name: '',
+    apiName: '',
     uri: '',
     method: 'GET' as 'GET' | 'POST' | 'PUT' | 'DELETE',
+    tags: '',
     parameters: [] as Array<{
-      name: string;
-      type: 'query' | 'body';
-      required: boolean;
-      description: string;
+      apiParameterName: string;
+      apiParameterType: 'query' | 'body';
+      apiParameterRequired: 'Y' | 'N';
+      apiParameterDesc: string;
     }>
   });
 
@@ -89,14 +91,15 @@ export function ApiManagement() {
     console.log('수정할 API:', api);
     console.log('API Parameter IDs:', api.apiParameterIds);
     
-    setEditingApiId(api.id);
+    setEditingApiId(api.apiId);
     setIsLoadingParameters(true);
     
     // 기본 API 정보는 즉시 설정
     setNewApi({
-      name: api.name,
+      apiName: api.apiName,
       uri: api.uri,
       method: api.method,
+      tags: api.tags,
       parameters: [] // 파라미터는 로딩 중
     });
     
@@ -104,7 +107,7 @@ export function ApiManagement() {
     
     // API 파라미터 로드
     try {
-      if (api.apiParameterIds.length === 0) {
+      if (api.apiParameterIds === null || api.apiParameterIds.length === 0) {
         console.log('파라미터가 없는 API입니다.');
         setNewApi(prev => ({
           ...prev,
@@ -114,8 +117,8 @@ export function ApiManagement() {
         return;
       }
 
-      console.log(`파라미터 로드 시작: /api/apis/${api.id}/parameters`);
-      const response = await fetch(`/api/apis/${api.id}/parameters`);
+      console.log(`파라미터 로드 시작: /api/apis/${api.apiId}/parameters`);
+      const response = await fetch(`/api/apis/${api.apiId}/parameters`);
       
       if (!response.ok) {
         throw new Error(`파라미터 로드 실패: ${response.status}`);
@@ -134,10 +137,10 @@ export function ApiManagement() {
       setNewApi(prev => ({
         ...prev,
         parameters: params.map(p => ({
-          name: p.name,
-          type: p.type,
-          required: p.required,
-          description: p.description || ''
+          apiParameterName: p.apiParameterName,
+          apiParameterType: p.apiParameterType,
+          apiParameterRequired: p.apiParameterRequired as 'Y' | 'N',
+          apiParameterDesc: p.apiParameterDesc || ''
         }))
       }));
       
@@ -167,20 +170,20 @@ export function ApiManagement() {
     setIsLoadingParameters(true);
     
     // 복사본 이름 생성
-    const copyName = `${api.name} (복사본)`;
+    const copyName = `${api.apiName} (복사본)`;
     
     try {
       // ✅ 기존 파라미터 로드 (속성만 복사, ID는 새로 생성됨)
       let parameters: Array<{
-        name: string;
-        type: 'query' | 'body';
-        required: boolean;
-        description: string;
+        apiParameterName: string;
+        apiParameterType: 'query' | 'body';
+        apiParameterRequired: 'Y' | 'N';
+        apiParameterDesc: string;
       }> = [];
 
       if (api.apiParameterIds.length > 0) {
-        console.log(`파라미터 로드 시작: /api/apis/${api.id}/parameters`);
-        const response = await fetch(`/api/apis/${api.id}/parameters`);
+        console.log(`파라미터 로드 시작: /api/apis/${api.apiId}/parameters`);
+        const response = await fetch(`/api/apis/${api.apiId}/parameters`);
         
         if (response.ok) {
           const data = await response.json();
@@ -190,10 +193,10 @@ export function ApiManagement() {
           
           // ✅ 파라미터 속성만 복사 (ID는 제외 - 새로 생성될 것임)
           parameters = params.map(p => ({
-            name: p.name,
-            type: p.type,
-            required: p.required,
-            description: p.description || ''
+            apiParameterName: p.apiParameterName,
+            apiParameterType: p.apiParameterType,
+            apiParameterRequired: p.apiParameterRequired as 'Y' | 'N',
+            apiParameterDesc: p.apiParameterDesc || ''
           }));
           
           console.log('복사할 파라미터 (ID 제외):', parameters);
@@ -202,9 +205,10 @@ export function ApiManagement() {
 
       // 복사본 생성
       const apiToCopy = {
-        name: copyName,
+        apiName: copyName,
         uri: api.uri,
         method: api.method,
+        tags: api.tags,
         parameters: parameters // ✅ ID 없는 파라미터 데이터 - 백엔드에서 새 ID로 생성됨
       };
 
@@ -229,7 +233,7 @@ export function ApiManagement() {
       
       setApis(prev => [...prev, copiedApi]);
       
-      alert(`API가 성공적으로 복사되었습니다.\n원본 API ID: ${api.id}\n복사본 API ID: ${copiedApi.id}`);
+      alert(`API가 성공적으로 복사되었습니다.\n원본 API 이름: ${api.apiName}\n복사본 API 이름: ${copiedApi.apiName}`);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'API 복사에 실패했습니다.';
       console.error("API 복사 실패:", message);
@@ -243,9 +247,10 @@ export function ApiManagement() {
   // 취소 핸들러
   const handleCancel = () => {
     setNewApi({
-      name: '',
+      apiName: '',
       uri: '',
       method: 'GET',
+      tags: '',
       parameters: []
     });
     setEditingApiId(null);
@@ -259,7 +264,7 @@ export function ApiManagement() {
       ...newApi,
       parameters: [
         ...newApi.parameters,
-        { name: '', type: 'query', required: false, description: '' }
+        { apiParameterName: '', apiParameterType: 'query', apiParameterRequired: 'N', apiParameterDesc: '' }
       ]
     });
   };
@@ -287,29 +292,31 @@ export function ApiManagement() {
 
   // API 생성
   const createApi = async () => {
-    if (!newApi.name || !newApi.uri) {
-      alert('이름과 URI는 필수 입력 항목입니다.');
-      return;
-    }
 
-    // 파라미터 유효성 검사
-    const invalidParams = newApi.parameters.filter(p => !p.name);
-    if (invalidParams.length > 0) {
-      alert('모든 파라미터에 이름을 입력해주세요.');
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateApiData({
+        apiName: newApi.apiName,
+        uri: newApi.uri,
+        method: newApi.method,
+        tags: newApi.tags,
+        parameters: newApi.parameters
+    });
+
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
     setIsCreating(true);
     try {
       const apiToCreate = {
-        name: newApi.name,
+        apiName: newApi.apiName,
         uri: newApi.uri,
         method: newApi.method,
         parameters: newApi.parameters
       };
 
       console.log('API 생성 요청:', apiToCreate);
-
       const response = await fetch('/api/apis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -341,24 +348,27 @@ export function ApiManagement() {
 
   // API 수정 (파라미터 ID는 유지하면서 내용만 업데이트)
   const updateApi = async () => {
-    if (!editingApiId || !newApi.name || !newApi.uri) {
-      alert('이름과 URI는 필수 입력 항목입니다.');
-      return;
-    }
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateApiData({
+        apiName: newApi.apiName,
+        uri: newApi.uri,
+        method: newApi.method,
+        tags: newApi.tags,
+        parameters: newApi.parameters
+    });
 
-    // 파라미터 유효성 검사
-    const invalidParams = newApi.parameters.filter(p => !p.name);
-    if (invalidParams.length > 0) {
-      alert('모든 파라미터에 이름을 입력해주세요.');
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
     setIsUpdating(true);
     try {
       const apiToUpdate = {
-        name: newApi.name,
+        apiName: newApi.apiName,
         uri: newApi.uri,
         method: newApi.method,
+        tags: newApi.tags,
         parameters: newApi.parameters // ✅ 파라미터도 포함 (ID는 유지되며 내용만 업데이트)
       };
 
@@ -371,8 +381,18 @@ export function ApiManagement() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `API 수정 실패: ${response.status}`);
+        let errorMessage = `API 수정 실패: ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // JSON 파싱 실패 시 기본 메시지 사용
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
@@ -381,7 +401,7 @@ export function ApiManagement() {
       console.log('수정된 API:', updatedApi);
       
       setApis(prev => prev.map(api => 
-        api.id === editingApiId ? updatedApi : api
+        api.apiId === editingApiId ? updatedApi : api
       ));
       
       handleCancel();
@@ -396,13 +416,13 @@ export function ApiManagement() {
   };
 
   // API 삭제
-  const deleteApi = async (id: number) => {
-    if (!confirm('정말 이 API를 삭제하시겠습니까? 연관된 테스트도 영향을 받을 수 있습니다.')) {
+  const deleteApi = async (apiId: number) => {
+    if (!confirm('API를 삭제하시겠습니까?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/apis/${id}`, {
+      const response = await fetch(`/api/apis/${apiId}`, {
         method: 'DELETE',
       });
 
@@ -411,7 +431,7 @@ export function ApiManagement() {
         throw new Error(errorData.message || `API 삭제 실패: ${response.status}`);
       }
 
-      setApis(prev => prev.filter(a => a.id !== id));
+      setApis(prev => prev.filter(a => a.apiId !== apiId));
       alert('API가 성공적으로 삭제되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : 'API 삭제에 실패했습니다.';
@@ -474,7 +494,9 @@ export function ApiManagement() {
           </div>
         </CardHeader>
       </Card>
-
+{/* ********************************************************
+      API 추가/수정 폼 시작
+*********************************************************** */}
       {showAddForm && (
         <Card>
           <CardHeader>
@@ -485,10 +507,10 @@ export function ApiManagement() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>API 이름 *</Label>
+              <Label>API 이름 <span className="text-red-500">*</span></Label>
               <Input
-                value={newApi.name}
-                onChange={(e) => setNewApi({ ...newApi, name: e.target.value })}
+                value={newApi.apiName}
+                onChange={(e) => setNewApi({ ...newApi, apiName: e.target.value })}
                 placeholder="예: User List API"
                 disabled={isLoadingParameters}
               />
@@ -496,7 +518,7 @@ export function ApiManagement() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Method *</Label>
+                <Label>Method <span className="text-red-500">*</span></Label>
                 <Select
                   value={newApi.method}
                   onValueChange={(v: any) => setNewApi({ ...newApi, method: v })}
@@ -514,7 +536,7 @@ export function ApiManagement() {
                 </Select>
               </div>
               <div>
-                <Label>URI *</Label>
+                <Label>URI <span className="text-red-500">*</span></Label>
                 <Input
                   value={newApi.uri}
                   onChange={(e) => setNewApi({ ...newApi, uri: e.target.value })}
@@ -522,6 +544,18 @@ export function ApiManagement() {
                   disabled={isLoadingParameters}
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>태그</Label>
+              <Input
+                value={newApi.tags}
+                onChange={(e) => setNewApi({ ...newApi, tags: e.target.value })}
+                placeholder="태그를 콤마로 구분하여 입력 (예: production,web,critical)"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                콤마(,)로 구분하여 여러 태그를 입력할 수 있습니다.
+              </p>
             </div>
 
             {/* 파라미터 관리 */}
@@ -546,27 +580,30 @@ export function ApiManagement() {
                 </div>
               ) : newApi.parameters.length === 0 ? (
                 <div className="text-sm text-gray-500 p-4 border rounded text-center">
-                  파라미터가 없습니다. "파라미터 추가" 버튼을 클릭하세요.
+                  파라미터가 없습니다. &quot;파라미터 추가&quot; 버튼을 클릭하세요.
                 </div>
               ) : (
+/* ********************************************************
+      API 파라미터
+*********************************************************** */
                 <div className="space-y-3">
                   {newApi.parameters.map((param, index) => (
                     <Card key={index} className="p-3">
                       <div className="space-y-2">
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <Label className="text-xs">이름 *</Label>
+                            <Label className="text-xs">이름 <span className="text-red-500">*</span></Label>
                             <Input
-                              value={param.name}
-                              onChange={(e) => updateParameter(index, 'name', e.target.value)}
+                              value={param.apiParameterName}
+                              onChange={(e) => updateParameter(index, 'apiParameterName', e.target.value)}
                               placeholder="userId"
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">타입 *</Label>
+                            <Label className="text-xs">타입 <span className="text-red-500">*</span></Label>
                             <Select
-                              value={param.type}
-                              onValueChange={(v) => updateParameter(index, 'type', v)}
+                              value={param.apiParameterType}
+                              onValueChange={(v) => updateParameter(index, 'apiParameterType', v)}
                             >
                               <SelectTrigger className="h-9">
                                 <SelectValue />
@@ -581,8 +618,8 @@ export function ApiManagement() {
                         <div>
                           <Label className="text-xs">설명</Label>
                           <Input
-                            value={param.description}
-                            onChange={(e) => updateParameter(index, 'description', e.target.value)}
+                            value={param.apiParameterDesc}
+                            onChange={(e) => updateParameter(index, 'apiParameterDesc', e.target.value)}
                             placeholder="파라미터 설명"
                           />
                         </div>
@@ -590,8 +627,8 @@ export function ApiManagement() {
                           <div className="flex items-center space-x-2">
                             <Checkbox
                               id={`required-${index}`}
-                              checked={param.required}
-                              onCheckedChange={(checked) => updateParameter(index, 'required', checked)}
+                              checked={param.apiParameterRequired === 'Y'}
+                              onCheckedChange={(checked) => updateParameter(index, 'apiParameterRequired', checked ? 'Y' : 'N')}
                             />
                             <label htmlFor={`required-${index}`} className="text-xs cursor-pointer">
                               필수 항목
@@ -611,7 +648,9 @@ export function ApiManagement() {
                 </div>
               )}
             </div>
-
+{/* ********************************************************
+      API 수정' : 'API 등록 버튼
+*********************************************************** */}
             <div className="flex gap-2">
               <Button 
                 onClick={editingApiId ? updateApi : createApi} 
@@ -639,6 +678,9 @@ export function ApiManagement() {
         </Card>
       )}
 
+{/* ********************************************************
+      API 목록
+*********************************************************** */}
       <div className="grid gap-4">
         {apis.length === 0 ? (
           <Card>
@@ -648,26 +690,27 @@ export function ApiManagement() {
           </Card>
         ) : (
           apis.map((api) => {
-            const isExpanded = expandedApis[api.id] ?? false;
+            console.log('렌더링 API:', api);
+            const isExpanded = expandedApis[api.apiId] ?? false;
             
             return (
-              <Card key={api.id}>
+              <Card key={api.apiId}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="secondary" className="text-xs font-mono">
-                          ID: {api.id}
+                          ID: {api.apiId}
                         </Badge>
-                        <CardTitle className="text-lg">{api.name}</CardTitle>
+                        <CardTitle className="text-lg">{api.apiName}</CardTitle>
                         <Badge variant="outline">
                           {api.method}
                         </Badge>
                       </div>
                       <CardDescription>{api.uri}</CardDescription>
-                      {api.apiParameterIds && api.apiParameterIds.length > 0 && (
+                      {api.apiParameterCount && (
                         <CardDescription className="mt-1 text-blue-600">
-                          {api.apiParameterIds.length}개의 파라미터
+                          {api.apiParameterCount}개의 파라미터
                         </CardDescription>
                       )}
                     </div>
@@ -692,7 +735,7 @@ export function ApiManagement() {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => deleteApi(api.id)}
+                        onClick={() => deleteApi(api.apiId)}
                         title="API 삭제"
                       >
                         <Trash2 className="w-4 h-4 text-red-600" />
@@ -701,7 +744,7 @@ export function ApiManagement() {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => toggleApiExpansion(api.id)}
+                          onClick={() => toggleApiExpansion(api.apiId)}
                           title={isExpanded ? "파라미터 숨기기" : "파라미터 보기"}
                         >
                           {isExpanded ? (
@@ -717,7 +760,7 @@ export function ApiManagement() {
                 
                 {isExpanded && api.apiParameterIds && api.apiParameterIds.length > 0 && (
                   <CardContent>
-                    <ApiParametersDisplay apiId={api.id} />
+                    <ApiParametersDisplay apiId={api.apiId} />
                   </CardContent>
                 )}
               </Card>
@@ -786,22 +829,22 @@ function ApiParametersDisplay({ apiId }: { apiId: number }) {
       <Label className="text-sm font-semibold">파라미터 목록</Label>
       <div className="grid gap-2">
         {parameters.map((param) => (
-          <div key={param.id} className="p-3 border rounded bg-gray-50">
+          <div key={param.apiParameterId} className="p-3 border rounded bg-gray-50">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">{param.name}</span>
+                  <span className="font-medium">{param.apiParameterName}</span>
                   <Badge variant="secondary" className="text-xs">
-                    {param.type}
+                    {param.apiParameterType}
                   </Badge>
-                  {param.required && (
+                  {param.apiParameterRequired === 'Y' && (
                     <Badge variant="destructive" className="text-xs">
                       필수
                     </Badge>
                   )}
                 </div>
-                {param.description && (
-                  <p className="text-xs text-gray-600">{param.description}</p>
+                {param.apiParameterDesc && (
+                  <p className="text-xs text-gray-600">{param.apiParameterDesc}</p>
                 )}
               </div>
             </div>

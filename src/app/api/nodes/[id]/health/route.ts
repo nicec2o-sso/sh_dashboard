@@ -6,11 +6,12 @@ import { NodeService } from '@/services/nodeService';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
-    const node = NodeService.getNodeById(id);
+    const { id: idStr } = await params;
+    const nodeId = parseInt(idStr);
+    const node = NodeService.getNodeById(nodeId);
 
     if (!node) {
       return NextResponse.json(
@@ -19,15 +20,12 @@ export async function POST(
       );
     }
 
-    const isHealthy = await NodeService.checkNodeHealth(id);
-    const updatedNode = NodeService.getNodeById(id);
-
+    const nodeStatus = await NodeService.checkNodeHealth(nodeId);
     return NextResponse.json({
       success: true,
       data: {
-        nodeId: id,
-        isHealthy,
-        status: updatedNode?.status,
+        nodeId: nodeId,
+        nodeStatus: nodeStatus,
         checkedAt: new Date().toISOString(),
       },
     });

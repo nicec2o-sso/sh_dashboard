@@ -34,12 +34,12 @@ const getTargetNodesFromTestConfig = (
   const id = parseInt(targetId);
   
   if (targetType === 'group') {
-    const group = nodeGroups.find(g => g.id === id);
+    const group = nodeGroups.find(g => g.nodeGroupId === id);
     if (group) {
-      return nodes.filter(n => group.nodeIds.includes(n.id));
+      return nodes.filter(n => group.nodeIds.includes(n.nodeId));
     }
   } else {
-    const node = nodes.find(n => n.id === id);
+    const node = nodes.find(n => n.nodeId === id);
     if (node) return [node];
   }
   return [];
@@ -65,7 +65,7 @@ export function ApiTestSection({
 
   // 선택된 API 찾기
   const selectedApi = useMemo(() => {
-    return apis.find(api => api.id.toString() === selectedApiId);
+    return apis.find(api => api.apiId.toString() === selectedApiId);
   }, [apis, selectedApiId]);
 
   // ✅ [추가] API 선택 시 파라미터 상세 정보 로드 (GET /api/apis/[id]/parameters 사용)
@@ -124,9 +124,9 @@ export function ApiTestSection({
     Object.entries(paramValues).forEach(([paramIdStr, value]) => {
       if (value && value.trim() !== '') {
         const paramId = parseInt(paramIdStr);
-        const param = selectedApiParameters.find(p => p.id === paramId);
+        const param = selectedApiParameters.find(p => p.apiParameterId === paramId);
         if (param) {
-          cleaned[param.name] = value.trim();
+          cleaned[param.apiParameterName] = value.trim();
         }
       }
     });
@@ -169,7 +169,7 @@ export function ApiTestSection({
     const tmpExecutionResult: ApiExecutionResult[] = [];
 
     for (const targetNode of targetNodes) {
-      console.log(`Executing API ID ${selectedApiId} on Node ID ${targetNode.id} with params:`, cleanedParams);
+      console.log(`Executing API ID ${selectedApiId} on Node ID ${targetNode.nodeId} with params:`, cleanedParams);
       try {
         const response = await fetch(EXECUTION_ENDPOINT, {
           method: 'POST',
@@ -183,11 +183,11 @@ export function ApiTestSection({
         const resultData = await response.json();
         
         if (!response.ok || !resultData.success) {
-          const errorMessage = `노드 ${targetNode.name} (${targetNode.id}) API 호출 실패: HTTP ${response.status}. ${resultData.data?.error || resultData.data?.message || '알 수 없는 오류'}`;
+          const errorMessage = `노드 ${targetNode.nodeName} (${targetNode.nodeId}) API 호출 실패: HTTP ${response.status}. ${resultData.data?.error || resultData.data?.message || '알 수 없는 오류'}`;
           
           tmpExecutionResult.push({
-            nodeId: targetNode.id,
-            nodeName: targetNode.name,
+            nodeId: targetNode.nodeId,
+            nodeName: targetNode.nodeName,
             success: false,
             responseTimeMs: resultData.data?.results?.responseTimeMs || 0,
             statusCode: response.status,
@@ -197,10 +197,10 @@ export function ApiTestSection({
             },
           });
         } else {
-          console.log(`Node ID: ${targetNode.id} API executed successfully:`, resultData);
+          console.log(`Node ID: ${targetNode.nodeId} API executed successfully:`, resultData);
           tmpExecutionResult.push({ 
-            nodeId: targetNode.id, 
-            nodeName: targetNode.name,
+            nodeId: targetNode.nodeId, 
+            nodeName: targetNode.nodeName,
             success: true,
             responseTimeMs: resultData.data?.results?.responseTimeMs || 0,
             statusCode: resultData.statusCode || response.status,
@@ -208,10 +208,10 @@ export function ApiTestSection({
           });
         }
       } catch (e) {
-        console.error(`노드 ID: ${targetNode.id} API 테스트 중 오류 발생:`, e);
+        console.error(`노드 ID: ${targetNode.nodeId} API 테스트 중 오류 발생:`, e);
         tmpExecutionResult.push({
-          nodeId: targetNode.id,
-          nodeName: targetNode.name,
+          nodeId: targetNode.nodeId,
+          nodeName: targetNode.nodeName,
           success: false,
           responseTimeMs: 0,
           statusCode: 0,
@@ -255,27 +255,27 @@ export function ApiTestSection({
           ) : selectedApiParameters.length > 0 ? (
             <div className="space-y-3 mt-2">
               {selectedApiParameters.map((param) => (
-                <div key={param.id}>
+                <div key={param.apiParameterId}>
                   <Label 
-                    htmlFor={`test-param-${param.id}`} 
+                    htmlFor={`test-param-${param.apiParameterId}`} 
                     className="flex justify-between items-center text-sm"
                   >
                     <span>
-                      {param.name}
+                      {param.apiParameterName}
                       <span className="text-gray-500 font-normal ml-1">
-                        ({param.type})
+                        ({param.apiParameterType})
                       </span>
-                      {param.required && <span className="text-red-500 ml-1 font-bold">*</span>}
+                      {param.apiParameterRequired && <span className="text-red-500 ml-1 font-bold">*</span>}
                     </span>
-                    {param.description && (
-                      <span className="text-xs text-gray-400">{param.description}</span>
+                    {param.apiParameterDesc && (
+                      <span className="text-xs text-gray-400">{param.apiParameterDesc}</span>
                     )}
                   </Label>
                   <Input
-                    id={`test-param-${param.id}`}
-                    placeholder={`값 입력${param.required ? ' (필수)' : ''}`}
-                    value={apiParameterValues[param.id] || ''}
-                    onChange={(e) => handleParamChange(param.id, e.target.value)}
+                    id={`test-param-${param.apiParameterId}`}
+                    placeholder={`값 입력${param.apiParameterRequired ? ' (필수)' : ''}`}
+                    value={apiParameterValues[param.apiParameterId] || ''}
+                    onChange={(e) => handleParamChange(param.apiParameterId, e.target.value)}
                   />
                 </div>
               ))}
@@ -338,7 +338,7 @@ export function ApiTestSection({
             <div className="space-y-3">
               {testExecutionResult.map((result, idx) => {
                 // 해당 노드의 상세 정보 찾기
-                const nodeDetail = nodes.find(n => n.id === result.nodeId);
+                const nodeDetail = nodes.find(n => n.nodeId === result.nodeId);
                 
                 return (
                   <Card 
@@ -355,8 +355,8 @@ export function ApiTestSection({
                               <p className="text-xs text-gray-500 mt-1">
                                 {nodeDetail.host}:{nodeDetail.port}
                               </p>
-                              {nodeDetail.description && (
-                                <p className="text-xs text-gray-600 mt-1">{nodeDetail.description}</p>
+                              {nodeDetail.nodeDesc && (
+                                <p className="text-xs text-gray-600 mt-1">{nodeDetail.nodeDesc}</p>
                               )}
                             </>
                           )}

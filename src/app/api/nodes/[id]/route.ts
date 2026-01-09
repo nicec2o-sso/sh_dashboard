@@ -1,41 +1,61 @@
+/**
+ * 노드 상세 관리 API
+ * 
+ * 경로: /api/nodes/[id]
+ * 
+ * 기능:
+ * - GET: 특정 노드 상세 조회
+ * - PUT: 노드 수정
+ * - DELETE: 노드 삭제
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { NodeService } from '@/services/nodeService';
-import { UpdateNodeDto } from '@/types';
+import { NodeServiceDB } from '@/services/nodeService.database';
 
 /**
- * GET /api/nodes/[id] - 특정 노드 조회
+ * GET /api/nodes/[id]
+ * 특정 노드 상세 조회
  */
 export async function GET(
   request: NextRequest,
-   context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
+    const nodeId = parseInt(contextParams.id);
 
-    const node = NodeService.getNodeById(id);
+    const node = await NodeServiceDB.getNodeById(nodeId);
 
     if (!node) {
       return NextResponse.json(
-        { success: false, error: '노드를 찾을 수 없습니다' },
+        { success: false, error: 'Node not found' },
         { status: 404 }
       );
     }
+
+    console.log('[Node Route] Node detail retrieved:', nodeId);
 
     return NextResponse.json({
       success: true,
       data: node,
     });
   } catch (error) {
+    console.error('[Node Route] Error fetching node detail:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 조회 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to fetch node detail',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * PUT /api/nodes/[id] - 노드 수정
+ * PUT /api/nodes/[id]
+ * 노드 수정
  */
 export async function PUT(
   request: NextRequest,
@@ -43,40 +63,61 @@ export async function PUT(
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
-    const body: UpdateNodeDto = await request.json();
+    const body = await request.json();
+    const nodeId = parseInt(contextParams.id);
+    
+    console.log('[Node Route] Updating node:', contextParams.id, body);
 
-    // 포트 유효성 검증
-    if (body.port !== undefined && (body.port < 1 || body.port > 65535)) {
-      return NextResponse.json(
-        { success: false, error: '올바른 포트 번호를 입력하세요 (1-65535)' },
-        { status: 400 }
-      );
+    // 서비스 호출로 노드 수정
+    try {
+      const updatedNode = await NodeServiceDB.updateNode(nodeId, {
+        nodeName: body.nodeName,
+        host: body.host,
+        port: body.port,
+        nodeStatus: body.nodeStatus,
+        nodeDesc: body.nodeDesc,
+        tags: body.tags,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updatedNode,
+        message: 'Node updated successfully',
+      });
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, error: serviceError.message },
+            { status: 404 }
+          );
+        }
+        if (serviceError.message.includes('already exists')) {
+          return NextResponse.json(
+            { success: false, error: serviceError.message },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    const updatedNode = NodeService.updateNode(id, body);
-
-    if (!updatedNode) {
-      return NextResponse.json(
-        { success: false, error: '노드를 찾을 수 없습니다' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: updatedNode,
-    });
   } catch (error) {
+    console.error('[Node Route] Error updating node:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 수정 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to update node',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * DELETE /api/nodes/[id] - 노드 삭제
+ * DELETE /api/nodes/[id]
+ * 노드 삭제
  */
 export async function DELETE(
   request: NextRequest,
@@ -84,24 +125,47 @@ export async function DELETE(
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
+    const nodeId = parseInt(contextParams.id);
 
-    const deleted = NodeService.deleteNode(id);
+    try {
+      await NodeServiceDB.deleteNode(nodeId);
 
-    if (!deleted) {
-      return NextResponse.json(
-        { success: false, error: '노드를 찾을 수 없습니다' },
-        { status: 404 }
-      );
+      console.log('[Node Route] Node deleted:', nodeId);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Node deleted successfully',
+        data: { nodeId },
+      });
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, error: 'Node not found' },
+            { status: 404 }
+          );
+        }
+        if (serviceError.message.includes('referenced by')) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Cannot delete node because it is referenced by other records',
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    return NextResponse.json({
-      success: true,
-      message: '노드가 삭제되었습니다',
-    });
   } catch (error) {
+    console.error('[Node Route] Error deleting node:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 삭제 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to delete node',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

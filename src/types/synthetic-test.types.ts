@@ -37,13 +37,13 @@
  * ```
  */
 export interface SyntheticTest {
-  id: number;
-  name: string;
+  syntheticTestId: number;
+  syntheticTestName: string;
   targetId: number;
   targetType: 'node' | 'group';
   apiId: number;
   apiParameterValues?: Record<number, string>; // apiParameterId -> value
-  tags: string[];
+  tags: string;
   intervalSeconds: number;
   alertThresholdMs: number;
   createdAt?: string;
@@ -82,7 +82,7 @@ export interface SyntheticTest {
  * ```
  */
 export interface SyntheticTestHistory {
-  id: number;
+  syntheticTestHistoryId: number;
   syntheticTestId: number;
   nodeId: number;
   statusCode: number;
@@ -121,7 +121,7 @@ export interface SyntheticTestHistory {
  * ```
  */
 export interface CreateSyntheticTestDto {
-  name: string;
+  syntheticTestName: string;
   targetId: number;
   targetType: 'node' | 'group';
   apiId: number;
@@ -159,7 +159,7 @@ export interface CreateSyntheticTestDto {
  * ```
  */
 export interface UpdateSyntheticTestDto {
-  name?: string;
+  syntheticTestName?: string;
   targetId?: number;
   targetType?: 'node' | 'group';
   apiId?: number;

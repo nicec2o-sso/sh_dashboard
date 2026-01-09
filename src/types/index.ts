@@ -33,6 +33,7 @@ export type {
 export type {
   Api,
   ApiParameter,
+  ApiParameterInput,
   ApiExecutionResult,
   CreateApiDto,
   UpdateApiDto,
@@ -48,3 +49,8 @@ export type {
   CreateSyntheticTestDto,
   UpdateSyntheticTestDto
 } from './synthetic-test.types';
+
+// Node 도메인 타입
+export type {
+  Tag
+} from './tag.types';

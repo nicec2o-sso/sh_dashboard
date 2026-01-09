@@ -56,7 +56,7 @@ export interface INodeRepository {
    * @param status - 조회할 상태
    * @returns 해당 상태의 노드 배열
    */
-  findByStatus(status: 'healthy' | 'warning' | 'error'): Promise<Node[]>;
+  findByStatus(status: 'active' | 'inactive' | 'warning' | 'error'): Promise<Node[]>;
 
   /**
    * 노드 생성

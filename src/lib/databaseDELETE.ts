@@ -78,20 +78,6 @@ export function isOracle(): boolean {
   return true;
 }
 
-/**
- * Altibase 사용 여부 확인 (항상 false - 제거됨)
- */
-export function isAltibase(): boolean {
-  return false;
-}
-
-/**
- * MySQL 사용 여부 확인 (항상 false - 제거됨)
- */
-export function isMySQL(): boolean {
-  return false;
-}
-
 // Oracle 인스턴스를 직접 export
 export const db = oracleDb;
 

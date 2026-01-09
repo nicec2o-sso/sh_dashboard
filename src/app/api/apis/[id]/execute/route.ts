@@ -13,7 +13,7 @@ export async function POST(
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
+    const apiId = parseInt(contextParams.id, 10);
     
     // 1. 요청 본문(Body) 파싱
     let body;
@@ -33,7 +33,7 @@ export async function POST(
     const parsedParams = body.parsedParams; // 클라이언트가 전달한 실제 파라미터 값
     
     // 2. API 정보 조회
-    const api = ApiService.getApiById(id);
+    const api = ApiService.getApiById(apiId);
     if (!api) {
       return NextResponse.json(
         { success: false, error: 'API를 찾을 수 없습니다' },
@@ -45,7 +45,7 @@ export async function POST(
     
     // 3-1. apiParameterIds (string[])를 number[]로 변환
     const numericParamIds: number[] = api.apiParameterIds
-        .filter(id => !isNaN(id));
+        .filter(apiId => !isNaN(apiId));
     
     // 3-2. ✅ [변경] ID 목록을 직접 전달하여 유효성 검증 수행
     // 파라미터 상세 정보 조회 로직은 validateParameters 내부로 이동했습니다.
@@ -62,14 +62,14 @@ export async function POST(
     }
 
     // 4. API 실행 (유효성 검증 통과)
-    console.log(`Executing API ID ${id} with parameters:`, parsedParams);
-    const results = await ApiService.executeApi(id, body);
+    console.log(`Executing API ID ${apiId} with parameters:`, parsedParams);
+    const results = await ApiService.executeApi(apiId, body);
   
     return NextResponse.json({
       success: results.success,
       data: {
-        apiId: id,
-        apiName: api.name,
+        apiId: apiId,
+        apiName: api.apiName,
         parameters: parsedParams,
         executedAt: new Date().toISOString(),
         results,

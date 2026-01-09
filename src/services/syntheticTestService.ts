@@ -13,8 +13,8 @@ import { WebClient } from './webClient';
 // 샘플 데이터
 let syntheticTests: SyntheticTest[] = [
   { 
-    id: 1, 
-    name: 'Web Health Monitor', 
+    syntheticTestId: 1, 
+    syntheticTestName: 'Web Health Monitor', 
     targetId: 1, 
     targetType: 'node',
     apiId: 1, 
@@ -24,8 +24,8 @@ let syntheticTests: SyntheticTest[] = [
     createdAt: new Date().toISOString(),
   },
   { 
-    id: 2, 
-    name: 'DB Performance', 
+    syntheticTestId: 2, 
+    syntheticTestName: 'DB Performance111', 
     targetId: 3, 
     targetType: 'group',
     apiId: 3, 
@@ -35,8 +35,8 @@ let syntheticTests: SyntheticTest[] = [
     createdAt: new Date().toISOString(),
   },
   { 
-    id: 3, 
-    name: 'DB Performance 333', 
+    syntheticTestId: 3, 
+    syntheticTestName: 'DB Performance 333', 
     targetId: 3, 
     targetType: 'group',
     apiId: 3, 
@@ -46,8 +46,8 @@ let syntheticTests: SyntheticTest[] = [
     createdAt: new Date().toISOString(),
   },
   { 
-    id: 4, 
-    name: 'DB Performance 444', 
+    syntheticTestId: 4, 
+    syntheticTestName: 'DB Performance 444', 
     targetId: 3, 
     targetType: 'group',
     apiId: 3, 
@@ -69,7 +69,7 @@ const generateSampleTestResults = (nodeId: number, syntheticTestId: number, node
   const now = Date.now();
   for (let i = hours; i >= 0; i--) {
     results.push({
-      id: nextResultId++,
+      syntheticTestHistoryId: nextResultId++,
       syntheticTestId,
       nodeId,
       statusCode: 200,
@@ -105,9 +105,9 @@ export class SyntheticTestService {
   /**
    * ID로 합성 테스트 조회
    */
-  static getTestById(id: number): SyntheticTest | null {
-    console.log('SyntheticTestService getTestById called with id:', id);
-    return syntheticTests.find(test => test.id === id) || null;
+  static getTestById(syntheticTestId: number): SyntheticTest | null {
+    console.log('SyntheticTestService getTestById called with id:', syntheticTestId);
+    return syntheticTests.find(test => test.syntheticTestId === syntheticTestId) || null;
   }
 
   /**
@@ -121,8 +121,8 @@ export class SyntheticTestService {
     }
 
     const newTest: SyntheticTest = {
-      id: nextTestId++,
-      name: dto.name,
+      syntheticTestId: nextTestId++,
+      syntheticTestName: dto.syntheticTestName,
       targetType: dto.targetType,
       targetId: dto.targetId,
       apiId: dto.apiId,
@@ -139,9 +139,9 @@ export class SyntheticTestService {
   /**
    * 합성 테스트 수정
    */
-  static updateTest(id: number, dto: UpdateSyntheticTestDto): SyntheticTest | null {
-    console.log('SyntheticTestService updateTest called with id:', id, 'dto:', dto);
-    const testIndex = syntheticTests.findIndex(test => test.id === id);
+  static updateTest(syntheticTestId: number, dto: UpdateSyntheticTestDto): SyntheticTest | null {
+    console.log('SyntheticTestService updateTest called with id:', syntheticTestId, 'dto:', dto);
+    const testIndex = syntheticTests.findIndex(test => test.syntheticTestId === syntheticTestId);
     if (testIndex === -1) return null;
 
     // API가 변경된 경우 존재 여부 확인
@@ -160,13 +160,13 @@ export class SyntheticTestService {
   /**
    * 합성 테스트 삭제
    */
-  static deleteTest(id: number): boolean {
-    console.log('SyntheticTestService deleteTest called with id:', id);
+  static deleteTest(syntheticTestId: number): boolean {
+    console.log('SyntheticTestService deleteTest called with id:', syntheticTestId);
     const initialLength = syntheticTests.length;
-    syntheticTests = syntheticTests.filter(test => test.id !== id);
+    syntheticTests = syntheticTests.filter(test => test.syntheticTestId !== syntheticTestId);
     
     // 관련 테스트 결과도 삭제
-    testHistory = testHistory.filter(result => result.syntheticTestId !== id);
+    testHistory = testHistory.filter(result => result.syntheticTestId !== syntheticTestId);
     
     return syntheticTests.length < initialLength;
   }
@@ -203,11 +203,11 @@ export class SyntheticTestService {
 
     // ===== 수정된 부분: ApiParameterService를 사용한 필수 파라미터 검증 =====
     const apiParameters = ApiParameterService.getParametersByIds(api.apiParameterIds);
-    const requiredParams = apiParameters.filter(p => p.required);
+    const requiredParams = apiParameters.filter(p => p.apiParameterRequired);
     
     for (const param of requiredParams) {
-      if (!parameters?.parsedParams || !(param.name in parameters.parsedParams)) {
-        throw new Error(`필수 파라미터가 누락되었습니다: ${param.name}`);
+      if (!parameters?.parsedParams || !(param.apiParameterName in parameters.parsedParams)) {
+        throw new Error(`필수 파라미터가 누락되었습니다: ${param.apiParameterName}`);
       }
     }
     // ===== 수정 끝 =====
@@ -362,14 +362,14 @@ export class SyntheticTestService {
   static getAllTestsStatus() {
     console.log('SyntheticTestService getAllTestsStatus called');
     return syntheticTests.map(test => {
-      const recentResults = this.getTestResults(test.id, { limit: 5 });
-      const stats = this.getTestStatistics(test.id, 1); // 최근 1시간
+      const recentResults = this.getTestResults(test.syntheticTestId, { limit: 5 });
+      const stats = this.getTestStatistics(test.syntheticTestId, 1); // 최근 1시간
 
       return {
         test,
         recentResults,
         statistics: stats,
-        hasAlerts: this.getAlertsForTest(test.id).length > 0,
+        hasAlerts: this.getAlertsForTest(test.syntheticTestId).length > 0,
       };
     });
   }

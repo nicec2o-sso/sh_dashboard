@@ -51,7 +51,6 @@ export function SyntheticTestResults({
   nodeName, 
   isGroupTest = false,
   showNodeHeader = false,
-  onExecute,
   onNodeClick,
   timeRange = 'all' // ✅ [추가] 기본값 'all'
 }: SyntheticTestResultsProps) {
@@ -84,22 +83,27 @@ export function SyntheticTestResults({
       const loadedTest = await testRes.json();
       const loadedHistory = await historyRes.json();
 
-      setTest(loadedTest.data.test);
+      setTest(loadedTest.data);
+      
+      // API 응답 형식 처리 (data 속성 확인)
+      const historyData = loadedHistory.data || loadedHistory || [];
       
       // 그룹 테스트이고 nodeId가 지정된 경우 해당 노드의 히스토리만 필터링
-      if (isGroupTest && nodeId) {
-        const filteredHistory = loadedHistory.filter((h: SyntheticTestHistory) => h.nodeId === nodeId);
+      if (isGroupTest && nodeId && Array.isArray(historyData)) {
+        const filteredHistory = historyData.filter((h: SyntheticTestHistory) => h.nodeId === nodeId);
         setHistory(filteredHistory);
       } else {
-        setHistory(loadedHistory);
+        setHistory(Array.isArray(historyData) ? historyData : []);
       }
 
       // 2. API 정보 로드 (test 정보 로드 후 필요)
-      const apiRes = await fetch(`/api/apis/${loadedTest.data.test.apiId}`);
-      if (!apiRes.ok) throw new Error(`API 정보 로드 실패: ${apiRes.status}`);
-      
-      const loadedApi = await apiRes.json();
-      setApi(loadedApi.data);
+      if (loadedTest.data && loadedTest.data.apiId) {
+        const apiRes = await fetch(`/api/apis/${loadedTest.data.apiId}`);
+        if (!apiRes.ok) throw new Error(`API 정보 로드 실패: ${apiRes.status}`);
+        
+        const loadedApi = await apiRes.json();
+        setApi(loadedApi.data);
+      }
 
     } catch (err) {
       console.error(`테스트 ID ${syntheticTestId} 데이터 로딩 실패:`, err);
@@ -258,7 +262,7 @@ export function SyntheticTestResults({
           <div>
             <CardDescription className="mt-1">
               {/* API 이름 및 실행 기준 정보 */}
-              대상 API: **{api.name}** (매 **{test.intervalSeconds}초**, 알럿 기준: **{test.alertThresholdMs}ms**)
+              대상 API: **{api.apiName}** (매 **{test.intervalSeconds}초**, 알럿 기준: **{test.alertThresholdMs}ms**)
             </CardDescription>
           </div>
           <div className="flex flex-col items-end gap-2 min-w-[100px]">
@@ -361,7 +365,7 @@ export function SyntheticTestResults({
             ) : (
               filteredHistory.slice(0, 20).map((item, index) => (
                 <Card 
-                  key={`${item.id || index}`}
+                  key={`${item.syntheticTestHistoryId || index}`}
                   className="border-l-4"
                   style={{ 
                     borderLeftColor: item.success ? '#10b981' : '#ef4444' 

@@ -1,9 +1,20 @@
+/**
+ * 노드 그룹 상세 관리 API
+ * 
+ * 경로: /api/node-groups/[id]
+ * 
+ * 기능:
+ * - GET: 특정 노드 그룹 상세 조회
+ * - PUT: 노드 그룹 수정
+ * - DELETE: 노드 그룹 삭제
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { NodeGroupService } from '@/services/nodeGroupService';
-import { UpdateNodeGroupDto } from '@/types';
+import { NodeGroupServiceDB } from '@/services/nodeGroupService.database';
 
 /**
- * GET /api/node-groups/[id] - 특정 노드 그룹 조회
+ * GET /api/node-groups/[id]
+ * 특정 노드 그룹 상세 조회
  */
 export async function GET(
   request: NextRequest,
@@ -11,39 +22,40 @@ export async function GET(
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
+    const nodeGroupId = parseInt(contextParams.id);
 
-    if (isNaN(id)) {
+    const nodeGroup = await NodeGroupServiceDB.getNodeGroupById(nodeGroupId);
+
+    if (!nodeGroup) {
       return NextResponse.json(
-        { success: false, error: '유효하지 않은 그룹 ID입니다' },
-        { status: 400 }
-      );
-    }
-
-    const group = NodeGroupService.getNodeGroupById(id);
-
-    if (!group) {
-      return NextResponse.json(
-        { success: false, error: '노드 그룹을 찾을 수 없습니다' },
+        { success: false, error: 'Node group not found' },
         { status: 404 }
       );
     }
 
+    console.log('[NodeGroup Route] Node group detail retrieved:', nodeGroupId);
+
     return NextResponse.json({
       success: true,
-      data: group,
+      data: nodeGroup,
     });
   } catch (error) {
-    console.error('Get node group error:', error);
+    console.error('[NodeGroup Route] Error fetching node group detail:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 그룹 조회 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to fetch node group detail',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * PUT /api/node-groups/[id] - 노드 그룹 수정
+ * PUT /api/node-groups/[id]
+ * 노드 그룹 수정
  */
 export async function PUT(
   request: NextRequest,
@@ -51,59 +63,58 @@ export async function PUT(
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
+    const body = await request.json();
+    const nodeGroupId = parseInt(contextParams.id);
+    
+    console.log('[NodeGroup Route] Updating node group:', contextParams.id, body);
 
-    if (isNaN(id)) {
-      return NextResponse.json(
-        { success: false, error: '유효하지 않은 그룹 ID입니다' },
-        { status: 400 }
-      );
+    // 서비스 호출로 노드 그룹 수정
+    try {
+      const updatedNodeGroup = await NodeGroupServiceDB.updateNodeGroup(nodeGroupId, {
+        nodeGroupName: body.nodeGroupName,
+        nodeGroupDesc: body.nodeGroupDesc,
+        nodeIds: body.nodeIds,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updatedNodeGroup,
+        message: 'Node group updated successfully',
+      });
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, error: serviceError.message },
+            { status: 404 }
+          );
+        }
+        if (serviceError.message.includes('already exists')) {
+          return NextResponse.json(
+            { success: false, error: serviceError.message },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    const body: UpdateNodeGroupDto = await request.json();
-    console.log('Received body for updating node group:', body);
-
-    // 유효성 검증
-    if (body.name !== undefined && !body.name) {
-      return NextResponse.json(
-        { success: false, error: '그룹 이름은 비어있을 수 없습니다' },
-        { status: 400 }
-      );
-    }
-
-    if (body.nodeIds !== undefined && body.nodeIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: '최소 1개의 노드를 선택해야 합니다' },
-        { status: 400 }
-      );
-    }
-
-    const updatedGroup = NodeGroupService.updateNodeGroup(id, body);
-
-    if (!updatedGroup) {
-      return NextResponse.json(
-        { success: false, error: '노드 그룹을 찾을 수 없거나 수정에 실패했습니다' },
-        { status: 404 }
-      );
-    }
-
-    console.log('Updated node group:', updatedGroup);
-
-    return NextResponse.json({
-      success: true,
-      data: updatedGroup,
-    });
   } catch (error) {
-    console.error('Update node group error:', error);
+    console.error('[NodeGroup Route] Error updating node group:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 그룹 수정 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to update node group',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * DELETE /api/node-groups/[id] - 노드 그룹 삭제
+ * DELETE /api/node-groups/[id]
+ * 노드 그룹 삭제
  */
 export async function DELETE(
   request: NextRequest,
@@ -111,35 +122,47 @@ export async function DELETE(
 ) {
   try {
     const contextParams = await context.params;
-    const id = parseInt(contextParams.id, 10);
+    const nodeGroupId = parseInt(contextParams.id);
 
-    if (isNaN(id)) {
-      return NextResponse.json(
-        { success: false, error: '유효하지 않은 그룹 ID입니다' },
-        { status: 400 }
-      );
+    try {
+      await NodeGroupServiceDB.deleteNodeGroup(nodeGroupId);
+
+      console.log('[NodeGroup Route] Node group deleted:', nodeGroupId);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Node group deleted successfully',
+        data: { nodeGroupId },
+      });
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, error: 'Node group not found' },
+            { status: 404 }
+          );
+        }
+        if (serviceError.message.includes('referenced by')) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Cannot delete node group because it is referenced by other records',
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    const deleted = NodeGroupService.deleteNodeGroup(id);
-
-    if (!deleted) {
-      return NextResponse.json(
-        { success: false, error: '노드 그룹을 찾을 수 없습니다' },
-        { status: 404 }
-      );
-    }
-
-    console.log('Deleted node group with id:', id);
-
-    return NextResponse.json({
-      success: true,
-      message: '노드 그룹이 성공적으로 삭제되었습니다',
-      data: { id },
-    });
   } catch (error) {
-    console.error('Delete node group error:', error);
+    console.error('[NodeGroup Route] Error deleting node group:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 그룹 삭제 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to delete node group',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

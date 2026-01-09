@@ -1,50 +1,26 @@
 /**
- * 데이터베이스 초기화 유틸리티
+ * 데이터베이스 초기화 미들웨어
  * 
- * API 라우트에서 호출하여 데이터베이스 연결을 보장합니다.
+ * 이 파일은 더 이상 필요하지 않습니다.
+ * oracle.ts가 자동으로 초기화를 처리합니다.
+ * 
+ * 하위 호환성을 위해 파일은 유지하지만 실제 초기화는 하지 않습니다.
  */
 
-import { db } from '@/lib/database';
+import { db } from '@/lib/oracle';
 
-let isInitialized = false;
-let initializationPromise: Promise<void> | null = null;
+let initPromise: Promise<void> | null = null;
 
 /**
- * 데이터베이스 초기화 (한 번만 실행)
+ * 데이터베이스 초기화 보장
  * 
- * 여러 API 라우트에서 동시에 호출해도 한 번만 초기화됩니다.
+ * 참고: oracle.ts의 자동 초기화로 인해 이 함수는 더 이상 필수가 아닙니다.
+ * 하지만 명시적으로 초기화를 원하는 경우 사용할 수 있습니다.
  */
 export async function ensureDatabaseInitialized(): Promise<void> {
-  // 이미 초기화되었으면 즉시 반환
-  if (isInitialized) {
-    return;
+  if (!initPromise) {
+    initPromise = db.initialize();
   }
-
-  // 초기화 중이면 해당 Promise 반환 (중복 초기화 방지)
-  if (initializationPromise) {
-    return initializationPromise;
-  }
-
-  // 새로운 초기화 시작
-  initializationPromise = (async () => {
-    try {
-      console.log('[DB Init] Starting database initialization...');
-      await db.initialize();
-      isInitialized = true;
-      console.log('[DB Init] ✅ Database initialized successfully');
-    } catch (error) {
-      console.error('[DB Init] ❌ Database initialization failed:', error);
-      initializationPromise = null; // 실패 시 다시 시도할 수 있도록
-      throw error;
-    }
-  })();
-
-  return initializationPromise;
-}
-
-/**
- * 데이터베이스 초기화 상태 확인
- */
-export function isDatabaseInitialized(): boolean {
-  return isInitialized;
+  
+  await initPromise;
 }

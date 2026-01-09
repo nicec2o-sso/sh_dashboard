@@ -99,7 +99,7 @@ export function useApiManagement(): UseApiManagementReturn {
    */
   const createApi = async (data: CreateApiDto): Promise<Api | null> => {
     // 유효성 검증
-    if (!data.name || !data.uri) {
+    if (!data.apiName || !data.uri) {
       alert('이름과 URI는 필수 입력 항목입니다.');
       return null;
     }
@@ -111,7 +111,7 @@ export function useApiManagement(): UseApiManagementReturn {
     }
 
     // 파라미터 검증
-    const invalidParams = data.parameters.filter(p => !p.name);
+    const invalidParams = (data.parameters || []).filter(p => !p.apiParameterName);
     if (invalidParams.length > 0) {
       alert('모든 파라미터에 이름을 입력해주세요.');
       return null;
@@ -156,7 +156,7 @@ export function useApiManagement(): UseApiManagementReturn {
    */
   const updateApi = async (id: number, data: UpdateApiDto): Promise<Api | null> => {
     // 유효성 검증
-    if (data.name !== undefined && !data.name) {
+    if (data.apiName !== undefined && !data.apiName) {
       alert('API 이름은 비워둘 수 없습니다.');
       return null;
     }
@@ -168,7 +168,7 @@ export function useApiManagement(): UseApiManagementReturn {
 
     // 파라미터 검증
     if (data.parameters) {
-      const invalidParams = data.parameters.filter(p => !p.name);
+      const invalidParams = data.parameters.filter(p => !p.apiParameterName);
       if (invalidParams.length > 0) {
         alert('모든 파라미터에 이름을 입력해주세요.');
         return null;
@@ -185,7 +185,7 @@ export function useApiManagement(): UseApiManagementReturn {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `API 수정 실패: ${response.status}`);
+        throw new Error(errorData.message || `API 수정 실패1111: ${response.status}`);
       }
 
       const result = await response.json();
@@ -259,28 +259,28 @@ export function useApiManagement(): UseApiManagementReturn {
     try {
       // 기존 파라미터 로드
       let parameters: Array<{
-        name: string;
-        type: 'query' | 'body';
-        required: boolean;
-        description: string;
+        apiParameterName: string;
+        apiParameterType: 'query' | 'body';
+        apiParameterRequired: 'Y' | 'N';
+        apiParameterDesc: string;
       }> = [];
 
       if (api.apiParameterIds.length > 0) {
-        const loadedParams = await loadApiParameters(api.id);
+        const loadedParams = await loadApiParameters(api.apiId);
         
         // 파라미터 속성만 복사 (ID는 제외)
         parameters = loadedParams.map(p => ({
-          name: p.name,
-          type: p.type,
-          required: p.required,
-          description: p.description || '',
+          apiParameterName: p.apiParameterName,
+          apiParameterType: p.apiParameterType,
+          apiParameterRequired: p.apiParameterRequired,
+          apiParameterDesc: p.apiParameterDesc || '',
         }));
       }
 
       // 복사본 생성
-      const copyName = `${api.name} (복사본)`;
+      const copyName = `${api.apiName} (복사본)`;
       const apiToCopy = {
-        name: copyName,
+        apiName: copyName,
         uri: api.uri,
         method: api.method,
         parameters,
@@ -302,7 +302,7 @@ export function useApiManagement(): UseApiManagementReturn {
 
       // 복사 성공 시 목록 갱신
       await refetch();
-      alert(`API가 성공적으로 복사되었습니다.\n원본 API ID: ${api.id}\n복사본 API ID: ${copiedApi.id}`);
+      alert(`API가 성공적으로 복사되었습니다.\n원본 API ID: ${api.apiId}\n복사본 API ID: ${copiedApi.id}`);
 
       return copiedApi;
     } catch (e) {

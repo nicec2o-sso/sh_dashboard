@@ -1,121 +1,164 @@
+/**
+ * Synthetic Test 상세 관리 API
+ * 
+ * 경로: /api/synthetic-tests/[id]
+ * 
+ * 기능:
+ * - GET: 특정 합성 테스트 상세 조회
+ * - PUT: 합성 테스트 수정
+ * - DELETE: 합성 테스트 삭제
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { SyntheticTestService } from '@/services/syntheticTestService';
-import { UpdateSyntheticTestDto } from '@/types';
+import { SyntheticTestServiceDB } from '@/services/syntheticTestService.database';
 
 /**
- * GET /api/synthetic-tests/[id] - 특정 합성 테스트 조회
+ * GET /api/synthetic-tests/[id]
+ * 특정 합성 테스트 상세 조회
  */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt((await context.params).id, 10);
-    const test = SyntheticTestService.getTestById(id);
+    const contextParams = await context.params;
+    const syntheticTestId = parseInt(contextParams.id);
+
+    const test = await SyntheticTestServiceDB.getSyntheticTestById(syntheticTestId);
 
     if (!test) {
       return NextResponse.json(
-        { success: false, error: '합성 테스트를 찾을 수 없습니다' },
+        { success: false, error: 'Synthetic test not found' },
         { status: 404 }
       );
     }
 
-    // 최근 통계 정보도 함께 반환
-    const statistics = SyntheticTestService.getTestStatistics(id, 24);
-    const alerts = SyntheticTestService.getAlertsForTest(id);
+    console.log('[SyntheticTest Route] Test detail retrieved:', syntheticTestId);
 
     return NextResponse.json({
       success: true,
-      data: {
-        test,
-        statistics,
-        hasAlerts: alerts.length > 0,
-        alertCount: alerts.length,
-      },
+      data: test,
     });
   } catch (error) {
+    console.error('[SyntheticTest Route] Error fetching test detail:', error);
+    
     return NextResponse.json(
-      { success: false, error: '합성 테스트 조회 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to fetch synthetic test detail',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * PATCH /api/synthetic-tests/[id] - 합성 테스트 수정
+ * PUT /api/synthetic-tests/[id]
+ * 합성 테스트 수정
  */
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt((await context.params).id, 10);
-
-    const body: UpdateSyntheticTestDto = await request.json();
-
-    // 유효성 검증
-    if (body.intervalSeconds !== undefined && body.intervalSeconds < 10) {
-      return NextResponse.json(
-        { success: false, error: '실행 간격은 최소 10초 이상이어야 합니다' },
-        { status: 400 }
-      );
-    }
-
-    if (body.alertThresholdMs !== undefined && body.alertThresholdMs < 0) {
-      return NextResponse.json(
-        { success: false, error: '알림 임계값은 0 이상이어야 합니다' },
-        { status: 400 }
-      );
-    }
-
-    const updatedTest = SyntheticTestService.updateTest(id, body);
+    const contextParams = await context.params;
+    const body = await request.json();
+    const syntheticTestId = parseInt(contextParams.id);
     
+    console.log('[SyntheticTest Route] Updating test:', contextParams.id, body);
 
-    if (!updatedTest) {
-      return NextResponse.json(
-        { success: false, error: '합성 테스트를 찾을 수 없거나 참조하는 리소스가 유효하지 않습니다' },
-        { status: 404 }
-      );
+    // 서비스 호출로 합성 테스트 수정
+    try {
+      const updatedTest = await SyntheticTestServiceDB.updateSyntheticTest(syntheticTestId, {
+        syntheticTestName: body.syntheticTestName,
+        targetType: body.targetType,
+        targetId: body.targetId,
+        apiId: body.apiId,
+        tags: body.tags,
+        intervalSeconds: body.intervalSeconds,
+        alertThresholdMs: body.alertThresholdMs,
+        syntheticTestEnabled: body.syntheticTestEnabled,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updatedTest,
+        message: 'Synthetic test updated successfully',
+      });
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, error: serviceError.message },
+            { status: 404 }
+          );
+        }
+        if (serviceError.message.includes('already exists')) {
+          return NextResponse.json(
+            { success: false, error: serviceError.message },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    console.log(`Synthetic test with ID ${id} updated:`, updatedTest);
-    return NextResponse.json({
-      success: true,
-      data: updatedTest,
-    });
   } catch (error) {
+    console.error('[SyntheticTest Route] Error updating test:', error);
+    
     return NextResponse.json(
-      { success: false, error: '합성 테스트 수정 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to update synthetic test',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * DELETE /api/synthetic-tests/[id] - 합성 테스트 삭제
+ * DELETE /api/synthetic-tests/[id]
+ * 합성 테스트 삭제
  */
 export async function DELETE(
   request: NextRequest,
-   context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt((await context.params).id, 10);
-    const deleted = SyntheticTestService.deleteTest(id);
+    const contextParams = await context.params;
+    const syntheticTestId = parseInt(contextParams.id);
 
-    if (!deleted) {
-      return NextResponse.json(
-        { success: false, error: '합성 테스트를 찾을 수 없습니다' },
-        { status: 404 }
-      );
+    try {
+      await SyntheticTestServiceDB.deleteSyntheticTest(syntheticTestId);
+
+      console.log('[SyntheticTest Route] Test deleted:', syntheticTestId);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Synthetic test deleted successfully',
+        data: { syntheticTestId },
+      });
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, error: 'Synthetic test not found' },
+            { status: 404 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    return NextResponse.json({
-      success: true,
-      message: '합성 테스트가 삭제되었습니다',
-    });
   } catch (error) {
+    console.error('[SyntheticTest Route] Error deleting test:', error);
+    
     return NextResponse.json(
-      { success: false, error: '합성 테스트 삭제 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to delete synthetic test',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

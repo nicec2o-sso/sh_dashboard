@@ -18,9 +18,9 @@
  * @property createdAt - 노드 그룹 생성 일시 (ISO 8601 형식)
  */
 export interface NodeGroup {
-  id: number;
-  name: string;
-  description: string;
+  nodeGroupId: number;
+  nodeGroupName: string;
+  nodeGroupDesc: string;
   nodeIds: number[];
   createdAt?: string;
 }
@@ -44,8 +44,8 @@ export interface NodeGroup {
  * ```
  */
 export interface CreateNodeGroupDto {
-  name: string;
-  description: string;
+  nodeGroupName: string;
+  nodeGroupDesc: string;
   nodeIds: number[];
 }
 
@@ -73,7 +73,7 @@ export interface CreateNodeGroupDto {
  * ```
  */
 export interface UpdateNodeGroupDto {
-  name?: string;
-  description?: string;
+  nodeGroupName?: string;
+  nodeGroupDesc?: string;
   nodeIds?: number[];
 }

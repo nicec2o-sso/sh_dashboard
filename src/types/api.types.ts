@@ -17,11 +17,11 @@
  * @property description - 파라미터에 대한 설명 (선택사항)
  */
 export interface ApiParameter {
-  id: number;
-  name: string;
-  type: 'query' | 'body';
-  required: boolean;
-  description?: string;
+  apiParameterId: number;
+  apiParameterName: string;
+  apiParameterType: 'query' | 'body';
+  apiParameterRequired: string;
+  apiParameterDesc?: string;
 }
 
 /**
@@ -37,12 +37,14 @@ export interface ApiParameter {
  * @property createdAt - API 생성 일시 (ISO 8601 형식)
  */
 export interface Api {
-  id: number;
-  name: string;
+  apiId: number;
+  apiName: string;
   uri: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  tags: string;
   apiParameterIds: number[];
   createdAt?: string;
+  apiParameterCount?: number;
 }
 
 /**
@@ -67,6 +69,16 @@ export interface ApiExecutionResult {
 }
 
 /**
+ * API 생성/수정 시 파라미터 정의용 간소화된 인터페이스
+ */
+export interface ApiParameterInput {
+  apiParameterName: string;
+  apiParameterType: 'query' | 'body';
+  apiParameterRequired: string;
+  apiParameterDesc?: string;
+}
+
+/**
  * API 생성 시 사용하는 DTO
  * 
  * 새로운 API를 정의할 때 필요한 데이터 구조입니다.
@@ -80,25 +92,26 @@ export interface ApiExecutionResult {
  * @example
  * ```typescript
  * const dto: CreateApiDto = {
- *   name: "Get User Info",
+ *   apiName: "Get User Info",
  *   uri: "/api/user",
  *   method: "GET",
  *   parameters: [
  *     {
- *       name: "userId",
- *       type: "query",
- *       required: true,
- *       description: "사용자 ID"
+ *       apiParameterName: "userId",
+ *       apiParameterType: "query",
+ *       apiParameterRequired: true,
+ *       apiParameterDesc: "사용자 ID"
  *     }
  *   ]
  * };
  * ```
  */
 export interface CreateApiDto {
-  name: string;
+  apiName: string;
   uri: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  parameters: ApiParameter[];
+  tags: string;
+  parameters?: ApiParameterInput[];
 }
 
 /**
@@ -107,7 +120,7 @@ export interface CreateApiDto {
  * 기존 API의 정보를 업데이트할 때 사용합니다.
  * 파라미터를 함께 전달하면 파라미터 ID는 유지하면서 내용만 업데이트됩니다.
  * 
- * @property name - 수정할 API 이름 (선택)
+ * @property apiName - 수정할 API 이름 (선택)
  * @property uri - 수정할 URI 경로 (선택)
  * @property method - 수정할 HTTP 메서드 (선택)
  * @property targetId - (사용 안 함, 레거시 필드)
@@ -117,23 +130,29 @@ export interface CreateApiDto {
  * ```typescript
  * // API 이름만 변경
  * const dto: UpdateApiDto = {
- *   name: "Updated API Name"
+ *   apiName: "Updated API Name"
  * };
  * 
  * // 파라미터 전체 교체
  * const dto2: UpdateApiDto = {
  *   parameters: [
- *     { name: "newParam", type: "body", required: false }
+ *     { 
+ *       apiParameterName: "newParam", 
+ *       apiParameterType: "body", 
+ *       apiParameterRequired: false,
+ *       apiParameterDesc: "설명"
+ *     }
  *   ]
  * };
  * ```
  */
 export interface UpdateApiDto {
-  name?: string;
+  apiName?: string;
   uri?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  tags?: string;
   targetId?: number;
-  parameters?: ApiParameter[]; 
+  parameters?: ApiParameterInput[];
 }
 
 /**

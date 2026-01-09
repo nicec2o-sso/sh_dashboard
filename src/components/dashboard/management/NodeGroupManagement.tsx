@@ -8,14 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Loader2, RefreshCw, Edit, ChevronDown, ChevronUp } from 'lucide-react';
 import { Node, NodeGroup } from '@/types';
+import { validateNodeGroupData } from '@/lib/clientValidation';
 
 export function NodeGroupManagement() {
   const [groups, setGroups] = useState<NodeGroup[]>([]);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newGroup, setNewGroup] = useState({
-    name: '',
-    description: '',
+    nodeGroupName: '',
+    nodeGroupDesc: '',
     nodeIds: [] as number[],
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -23,13 +24,9 @@ export function NodeGroupManagement() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // 수정 중인 그룹 ID
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
-  
-  // 각 그룹의 노드 목록 확장/축소 상태
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({});
 
-  // 데이터 fetch 함수
   const fetchData = useCallback(async () => {
     setError(null);
     try {
@@ -56,7 +53,6 @@ export function NodeGroupManagement() {
     }
   }, []);
 
-  // 초기 데이터 로드
   useEffect(() => {
     async function initialLoad() {
       setIsLoading(true);
@@ -66,16 +62,14 @@ export function NodeGroupManagement() {
     initialLoad();
   }, [fetchData]);
 
-  // 10초마다 자동 갱신
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000); // 10초
+    }, 10000);
 
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
-  // 그룹 확장/축소 토글
   const toggleGroupExpansion = (groupId: number) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -83,40 +77,40 @@ export function NodeGroupManagement() {
     }));
   };
 
-  // 수정 버튼 클릭 핸들러
   const handleEditClick = (group: NodeGroup) => {
-    setEditingGroupId(group.id);
+    setEditingGroupId(group.nodeGroupId);
     setNewGroup({
-      name: group.name,
-      description: group.description || '',
+      nodeGroupName: group.nodeGroupName,
+      nodeGroupDesc: group.nodeGroupDesc || '',
       nodeIds: [...group.nodeIds],
     });
     setShowAddForm(true);
   };
 
-  // 취소 핸들러
   const handleCancel = () => {
-    setNewGroup({ name: '', description: '', nodeIds: [] });
+    setNewGroup({ nodeGroupName: '', nodeGroupDesc: '', nodeIds: [] });
     setEditingGroupId(null);
     setShowAddForm(false);
   };
 
   const addGroup = async () => {
-    if (!newGroup.name) {
-      alert('그룹 이름을 입력해주세요.');
-      return;
-    }
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateNodeGroupData({
+      nodeGroupName: newGroup.nodeGroupName,
+      nodeGroupDesc: newGroup.nodeGroupDesc,
+      nodeIds: newGroup.nodeIds
+    });
 
-    if (newGroup.nodeIds.length === 0) {
-      alert('최소 하나의 노드를 선택해주세요.');
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
     setIsCreating(true);
     try {
       const groupToCreate = {
-        name: newGroup.name,
-        description: newGroup.description || undefined,
+        nodeGroupName: newGroup.nodeGroupName,
+        nodeGroupDesc: newGroup.nodeGroupDesc || undefined,
         nodeIds: newGroup.nodeIds,
       };
 
@@ -128,15 +122,12 @@ export function NodeGroupManagement() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `그룹 생성 실패: ${response.status}`);
+        throw new Error(errorData.error || errorData.message || `그룹 생성 실패: ${response.status}`);
       }
 
-      const createdGroup = await response.json();
-      
-      // 생성 성공 후 서버에서 최신 데이터 다시 가져오기
       await fetchData();
       
-      setNewGroup({ name: '', description: '', nodeIds: [] });
+      setNewGroup({ nodeGroupName: '', nodeGroupDesc: '', nodeIds: [] });
       setShowAddForm(false);
       alert('노드 그룹이 성공적으로 생성되었습니다.');
     } catch (e) {
@@ -148,23 +139,29 @@ export function NodeGroupManagement() {
     }
   };
 
-  // 그룹 수정 핸들러
   const updateGroup = async () => {
-    if (!editingGroupId || !newGroup.name) {
-      alert('그룹 이름을 입력해주세요.');
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateNodeGroupData({
+      nodeGroupName: newGroup.nodeGroupName,
+      nodeGroupDesc: newGroup.nodeGroupDesc,
+      nodeIds: newGroup.nodeIds
+    });
+
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
-    if (newGroup.nodeIds.length === 0) {
-      alert('최소 하나의 노드를 선택해주세요.');
+    if (!editingGroupId) {
+      alert('수정할 그룹이 선택되지 않았습니다.');
       return;
     }
 
     setIsUpdating(true);
     try {
       const groupToUpdate = {
-        name: newGroup.name,
-        description: newGroup.description || undefined,
+        nodeGroupName: newGroup.nodeGroupName,
+        nodeGroupDesc: newGroup.nodeGroupDesc || undefined,
         nodeIds: newGroup.nodeIds,
       };
 
@@ -176,15 +173,12 @@ export function NodeGroupManagement() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `그룹 수정 실패: ${response.status}`);
+        throw new Error(errorData.error || errorData.message || `그룹 수정 실패: ${response.status}`);
       }
 
-      const responseData = await response.json();
-      
-      // 수정 성공 후 서버에서 최신 데이터 다시 가져오기
       await fetchData();
       
-      setNewGroup({ name: '', description: '', nodeIds: [] });
+      setNewGroup({ nodeGroupName: '', nodeGroupDesc: '', nodeIds: [] });
       setEditingGroupId(null);
       setShowAddForm(false);
       alert('노드 그룹이 성공적으로 수정되었습니다.');
@@ -209,10 +203,9 @@ export function NodeGroupManagement() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `그룹 삭제 실패: ${response.status}`);
+        throw new Error(errorData.error || errorData.message || `그룹 삭제 실패: ${response.status}`);
       }
 
-      // 삭제 성공 후 서버에서 최신 데이터 다시 가져오기
       await fetchData();
       alert('노드 그룹이 성공적으로 삭제되었습니다.');
     } catch (e) {
@@ -291,8 +284,8 @@ export function NodeGroupManagement() {
             <div>
               <Label>그룹 이름 *</Label>
               <Input
-                value={newGroup.name}
-                onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
+                value={newGroup.nodeGroupName}
+                onChange={(e) => setNewGroup({ ...newGroup, nodeGroupName: e.target.value })}
                 placeholder="예: Web Cluster"
               />
             </div>
@@ -300,8 +293,8 @@ export function NodeGroupManagement() {
             <div>
               <Label>설명</Label>
               <Input
-                value={newGroup.description}
-                onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
+                value={newGroup.nodeGroupDesc}
+                onChange={(e) => setNewGroup({ ...newGroup, nodeGroupDesc: e.target.value })}
                 placeholder="그룹 설명 (선택사항)"
               />
             </div>
@@ -313,26 +306,26 @@ export function NodeGroupManagement() {
                   <div className="text-sm text-gray-500">사용 가능한 노드가 없습니다.</div>
                 ) : (
                   nodes.map((node) => (
-                    <div key={node.id} className="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded">
+                    <div key={node.nodeId} className="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded">
                       <Checkbox
-                        id={`node-${node.id}`}
-                        checked={newGroup.nodeIds.includes(node.id)}
-                        onCheckedChange={() => toggleNodeSelection(node.id)}
+                        id={`node-${node.nodeId}`}
+                        checked={newGroup.nodeIds.includes(node.nodeId)}
+                        onCheckedChange={() => toggleNodeSelection(node.nodeId)}
                         className="mt-1"
                       />
                       <label
-                        htmlFor={`node-${node.id}`}
+                        htmlFor={`node-${node.nodeId}`}
                         className="text-sm cursor-pointer flex-1"
                       >
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-xs font-mono">
-                            ID: {node.id}
+                            ID: {node.nodeId}
                           </Badge>
-                          <span className="font-medium">{node.name}</span>
+                          <span className="font-medium">{node.nodeName}</span>
                           <span className="text-gray-500">({node.host})</span>
                         </div>
-                        {node.description && (
-                          <div className="text-xs text-gray-500 mt-1">{node.description}</div>
+                        {node.nodeDesc && (
+                          <div className="text-xs text-gray-500 mt-1">{node.nodeDesc}</div>
                         )}
                       </label>
                     </div>
@@ -380,25 +373,25 @@ export function NodeGroupManagement() {
           </Card>
         ) : (
           groups.map((group) => {
-            const isExpanded = expandedGroups[group.id] ?? true; // 기본값: 확장
+            const isExpanded = expandedGroups[group.nodeGroupId] ?? true;
             const groupNodes = group.nodeIds
-              .map(nodeId => nodes.find(n => n.id === nodeId))
+              .map(nodeId => nodes.find(n => n.nodeId === nodeId))
               .filter(Boolean) as Node[];
 
             return (
-              <Card key={group.id}>
+              <Card key={group.nodeGroupId}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="secondary" className="text-xs font-mono">
-                          ID: {group.id}
+                          ID: {group.nodeGroupId}
                         </Badge>
-                        <CardTitle className="text-lg">{group.name}</CardTitle>
+                        <CardTitle className="text-lg">{group.nodeGroupName}</CardTitle>
                         <Badge variant="outline">{group.nodeIds.length}개 노드</Badge>
                       </div>
-                      {group.description && (
-                        <CardDescription className="mt-1">{group.description}</CardDescription>
+                      {group.nodeGroupDesc && (
+                        <CardDescription className="mt-1">{group.nodeGroupDesc}</CardDescription>
                       )}
                     </div>
                     
@@ -414,7 +407,7 @@ export function NodeGroupManagement() {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => deleteGroup(group.id)}
+                        onClick={() => deleteGroup(group.nodeGroupId)}
                         title="그룹 삭제"
                       >
                         <Trash2 className="w-4 h-4 text-red-600" />
@@ -423,7 +416,7 @@ export function NodeGroupManagement() {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => toggleGroupExpansion(group.id)}
+                          onClick={() => toggleGroupExpansion(group.nodeGroupId)}
                           title={isExpanded ? "노드 목록 숨기기" : "노드 목록 보기"}
                         >
                           {isExpanded ? (
@@ -448,25 +441,24 @@ export function NodeGroupManagement() {
                         <Label className="text-sm font-semibold">포함된 노드 목록</Label>
                         <div className="grid gap-2">
                           {groupNodes.map((node) => (
-                            <div key={node.id} className="p-3 border rounded bg-gray-50">
+                            <div key={node.nodeId} className="p-3 border rounded bg-gray-50">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     <Badge variant="secondary" className="text-xs font-mono">
-                                      ID: {node.id}
+                                      ID: {node.nodeId}
                                     </Badge>
-                                    <span className="font-medium">{node.name}</span>
+                                    <span className="font-medium">{node.nodeName}</span>
                                   </div>
                                   <div className="text-sm text-gray-600">{node.host}</div>
-                                  {node.description && (
-                                    <div className="text-xs text-gray-500 mt-1">{node.description}</div>
+                                  {node.nodeDesc && (
+                                    <div className="text-xs text-gray-500 mt-1">{node.nodeDesc}</div>
                                   )}
                                 </div>
                               </div>
                             </div>
                           ))}
-                          {/* 삭제된 노드 표시 */}
-                          {group.nodeIds.filter(id => !groupNodes.find(n => n.id === id)).map((nodeId) => (
+                          {group.nodeIds.filter(nodeGroupId => !groupNodes.find(n => n.nodeId === nodeGroupId)).map((nodeId) => (
                             <div key={nodeId} className="p-3 border border-red-200 rounded bg-red-50">
                               <div className="flex items-center gap-2">
                                 <Badge variant="destructive" className="text-xs font-mono">

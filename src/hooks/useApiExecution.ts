@@ -113,12 +113,12 @@ export function useApiExecution(): UseApiExecutionReturn {
     const targetId = parseInt(idStr);
 
     if (type === 'group') {
-      const group = nodeGroups.find(g => g.id === targetId);
+      const group = nodeGroups.find(g => g.nodeGroupId === targetId);
       if (group) {
-        return nodes.filter(n => group.nodeIds.includes(n.id));
+        return nodes.filter(n => group.nodeIds.includes(n.nodeId));
       }
     } else if (type === 'node') {
-      const node = nodes.find(n => n.id === targetId);
+      const node = nodes.find(n => n.nodeId === targetId);
       if (node) return [node];
     }
 
@@ -240,7 +240,7 @@ export function useApiExecution(): UseApiExecutionReturn {
 
     // 각 노드에 대해 API 실행
     for (const targetNode of targetNodes) {
-      console.log(`Executing API ID ${selectedApiId} on Node ID ${targetNode.id} with params:`, cleanedParams);
+      console.log(`Executing API ID ${selectedApiId} on Node ID ${targetNode.nodeId} with params:`, cleanedParams);
       
       try {
         const response = await fetch(executionEndpoint, {
@@ -255,11 +255,11 @@ export function useApiExecution(): UseApiExecutionReturn {
         const resultData = await response.json();
 
         if (!response.ok || !resultData.success) {
-          const errorMessage = `노드 ${targetNode.name} (${targetNode.id}) API 호출 실패: HTTP ${response.status}. ${resultData.data?.error || resultData.data?.message || '알 수 없는 오류'}`;
+          const errorMessage = `노드 ${targetNode.nodeName} (${targetNode.nodeId}) API 호출 실패: HTTP ${response.status}. ${resultData.data?.error || resultData.data?.message || '알 수 없는 오류'}`;
 
           results.push({
-            nodeId: targetNode.id,
-            nodeName: targetNode.name,
+            nodeId: targetNode.nodeId,
+            nodeName: targetNode.nodeName,
             success: false,
             responseTimeMs: resultData.data?.results?.responseTimeMs || 0,
             statusCode: response.status,
@@ -267,10 +267,10 @@ export function useApiExecution(): UseApiExecutionReturn {
           });
           hasError = true;
         } else {
-          console.log(`Node ID: ${targetNode.id} API executed successfully:`, resultData);
+          console.log(`Node ID: ${targetNode.nodeId} API executed successfully:`, resultData);
           results.push({
-            nodeId: targetNode.id,
-            nodeName: targetNode.name,
+            nodeId: targetNode.nodeId,
+            nodeName: targetNode.nodeName,
             success: true,
             responseTimeMs: resultData.data?.results?.responseTimeMs || 0,
             statusCode: resultData.statusCode || response.status,
@@ -278,12 +278,12 @@ export function useApiExecution(): UseApiExecutionReturn {
           });
         }
       } catch (e) {
-        console.error(`노드 ID: ${targetNode.id} API 실행 중 오류 발생:`, e);
+        console.error(`노드 ID: ${targetNode.nodeId} API 실행 중 오류 발생:`, e);
         hasError = true;
 
         results.push({
-          nodeId: targetNode.id,
-          nodeName: targetNode.name,
+          nodeId: targetNode.nodeId,
+          nodeName: targetNode.nodeName,
           success: false,
           responseTimeMs: 0,
           statusCode: 0,

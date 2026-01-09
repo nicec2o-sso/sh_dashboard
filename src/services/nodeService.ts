@@ -1,13 +1,7 @@
 import { Node, CreateNodeDto, UpdateNodeDto } from '@/types';
 
 // 샘플 데이터 (실제 환경에서는 DB로 대체)
-let nodes: Node[] = [
-  { id: 1, name: 'Web Server 1', host: '192.168.1.10', port: 8080, status: 'healthy', createdAt: new Date().toISOString() , description: 'Primary web server'},
-  { id: 2, name: 'Web Server 2', host: '192.168.1.2', port: 8080, status: 'warning', createdAt: new Date().toISOString() , description: 'Secondary web server'},
-  { id: 3, name: 'DB Server', host: '192.11.33.4', port: 5432, status: 'error', createdAt: new Date().toISOString() , description: 'PostgreSQL database server'},
-  { id: 4, name: 'Cache Server', host: '194.168.1.5', port: 6379, status: 'healthy', createdAt: new Date().toISOString() , description: 'Redis cache server'},
-  { id: 5, name: 'API Server', host: '10.2.14.111', port: 3000, status: 'healthy', createdAt: new Date().toISOString() , description: 'Backend API server'},
-];
+let nodes: Node[] = [];
 
 let nextId = 6;
 
@@ -24,16 +18,14 @@ export class NodeService {
    * ID로 노드 조회
    */
   static getNodeById(id: number): Node | null {
-    console.log
-    return nodes.find(node => node.id === id) || null;
+    return nodes.find(node => node.nodeId === id) || null;
   }
 
   /**
    * 여러 ID로 노드들 조회
    */
   static getNodesByIds(ids: number[]): Node[] {
-    console.log
-    return nodes.filter(node => ids.includes(node.id));
+    return nodes.filter(node => ids.includes(node.nodeId));
   }
 
   /**
@@ -42,11 +34,11 @@ export class NodeService {
   static createNode(dto: CreateNodeDto): Node {
     console.log('NodeService createNode called with dto:', dto);
     const newNode: Node = {
-      id: nextId++,
-      name: dto.name,
+      nodeId: nextId++, 
+      nodeName: dto.nodeName,
       host: dto.host,
       port: dto.port,
-      status: 'healthy',
+      nodeStatus: 'active',
       createdAt: new Date().toISOString(),
     };
     nodes.push(newNode);
@@ -56,12 +48,12 @@ export class NodeService {
   /**
    * 노드 수정
    */
-  static updateNode(id: number, dto: UpdateNodeDto): Node | null {
+  static updateNode(nodeId: number, dto: UpdateNodeDto): Node | null {
     
-    const nodeIndex = nodes.findIndex(node => node.id === id);
+    const nodeIndex = nodes.findIndex(node => node.nodeId === nodeId);
     if (nodeIndex === -1) return null;
 
-    console.log('NodeService updateNode called with id:', id, 'dto:', dto, 'nodes before update:', nodes[nodeIndex]);
+    console.log('NodeService updateNode called with id:', nodeId, 'dto:', dto, 'nodes before update:', nodes[nodeIndex]);
     nodes[nodeIndex] = {
       ...nodes[nodeIndex],
       ...dto,
@@ -74,37 +66,37 @@ export class NodeService {
   /**
    * 노드 삭제
    */
-  static deleteNode(id: number): boolean {
-    console.log('NodeService deleteNode called with id:', id);
+  static deleteNode(nodeId: number): boolean {
+    console.log('NodeService deleteNode called with id:', nodeId);
     console.log('Nodes before deletion:', nodes);
     const initialLength = nodes.length;
-    nodes = nodes.filter(node => node.id !== id);
+    nodes = nodes.filter(node => node.nodeId !== nodeId);
     return nodes.length < initialLength;
   }
 
   /**
    * 노드 상태 업데이트
    */
-  static updateNodeStatus(id: number, status: 'healthy' | 'warning' | 'error'): Node | null {
-    console.log('NodeService updateNodeStatus called with id:', id, 'status:', status);
-    return this.updateNode(id, { status });
+  static updateNodeStatus(nodeId: number, nodeStatus: 'active' | 'inactive' | 'warning' | 'error'): Node | null {
+    console.log('NodeService updateNodeStatus called with id:', nodeId, 'status:', nodeStatus);
+    return this.updateNode(nodeId, { nodeStatus });
   }
 
   /**
    * 노드 헬스체크
    */
-  static async checkNodeHealth(id: number): Promise<boolean> {
-    console.log('NodeService checkNodeHealth called with id:', id);
+  static async checkNodeHealth(nodeId: number): Promise<string> {
+    console.log('NodeService checkNodeHealth called with id:', nodeId);
     // 실제 환경에서는 실제 헬스체크 로직 구현
-    const node = this.getNodeById(id);
-    if (!node) return false;
+    const node = this.getNodeById(nodeId);
+    if (!node) return 'error';
 
     // 시뮬레이션: 90% 확률로 성공
     const isHealthy = Math.random() > 0.1;
-    const newStatus = isHealthy ? 'healthy' : 'error';
-    this.updateNodeStatus(id, newStatus);
+    const newStatus = isHealthy ? 'active' : 'error';
+    this.updateNodeStatus(nodeId, newStatus);
     
-    return isHealthy;
+    return newStatus;
   }
 
   /**
@@ -118,7 +110,7 @@ export class NodeService {
   /**
    * 상태별 노드 조회
    */
-  static getNodesByStatus(status: 'healthy' | 'warning' | 'error'): Node[] {
-    return nodes.filter(node => node.status === status);
+  static getNodesByStatus(nodeStatus: 'active' | 'inactive' | 'warning' | 'error'): Node[] {
+    return nodes.filter(node => node.nodeStatus === nodeStatus);
   }
 }

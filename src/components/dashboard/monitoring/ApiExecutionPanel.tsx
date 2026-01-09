@@ -20,13 +20,13 @@ const getTargetNodes = (selectedTarget: string, nodes: Node[], nodeGroups: NodeG
     const targetId = parseInt(idStr);
 
     if (type === 'group') {
-        const group = nodeGroups.find(g => g.id === targetId);
+        const group = nodeGroups.find(g => g.nodeGroupId === targetId);
         // NOTE: NodeGroup 타입에 nodeIds가 있다고 가정
-        if (group) {
-            return nodes.filter(n => (group as any).nodeIds.includes(n.id)); 
+        if (group && (group as any).nodeIds) {
+            return nodes.filter(n => (group as any).nodeIds.includes(n.nodeId)); 
         }
     } else if (type === 'node') {
-        const node = nodes.find(n => n.id === targetId);
+        const node = nodes.find(n => n.nodeId === targetId);
         if (node) return [node];
     }
     return [];
@@ -54,7 +54,7 @@ export function ApiExecutionPanel() {
 
     // 선택된 API 객체를 useMemo로 캐싱 (유지)
     const selectedApi = useMemo(() => {
-        return apis.find(api => api.id.toString() === selectedApiId);
+        return apis.find(api => api.apiId.toString() === selectedApiId);
     }, [apis, selectedApiId]);
 
     // ✅ [변경] 1. 초기 데이터 로드: api-parameters 호출 제거
@@ -74,9 +74,9 @@ export function ApiExecutionPanel() {
                 const groupsData = await groupsResponse.json();
                 const apisData = await apisResponse.json();
                 
-                setNodes(nodesData.data || []);
-                setNodeGroups(groupsData.data || []);
-                setApis(apisData.data || []);
+                setNodes(Array.isArray(nodesData.data) ? nodesData.data : []);
+                setNodeGroups(Array.isArray(groupsData.data) ? groupsData.data : []);
+                setApis(Array.isArray(apisData.data) ? apisData.data : []);
             } catch (e) {
                 console.error("Failed to fetch data:", e);
                 setError("데이터 로드에 실패했습니다.");
@@ -179,7 +179,7 @@ export function ApiExecutionPanel() {
         const tmpExecutionResult: ApiExecutionResult[] = [];
 
         for (const targetNode of targetNodes) {
-          console.log(`Executing API ID ${selectedApiId} on Node ID ${targetNode.id} with params:`, cleanedParams);
+          console.log(`Executing API ID ${selectedApiId} on Node ID ${targetNode.nodeId} with params:`, cleanedParams);
             try {
                 const response = await fetch(EXECUTION_ENDPOINT, {
                     method: 'POST',
@@ -192,11 +192,11 @@ export function ApiExecutionPanel() {
 
                 const resultData = await response.json();
                 if (!response.ok || !resultData.success) {
-                    const errorMessage = `노드 ${targetNode.name} (${targetNode.id}) API 호출 실패: HTTP ${response.status}. ${resultData.data?.error || resultData.data?.message || '알 수 없는 오류'}`;
+                    const errorMessage = `노드 ${targetNode.nodeName} (${targetNode.nodeId}) API 호출 실패: HTTP ${response.status}. ${resultData.data?.error || resultData.data?.message || '알 수 없는 오류'}`;
                     
                     tmpExecutionResult.push({
-                        nodeId: targetNode.id,
-                        nodeName: targetNode.name,
+                        nodeId: targetNode.nodeId,
+                        nodeName: targetNode.nodeName,
                         success: false,
                         responseTimeMs: resultData.data?.results?.responseTimeMs || 0,
                         statusCode: response.status,
@@ -204,10 +204,10 @@ export function ApiExecutionPanel() {
                     });
                     hasError = true;
                 } else {
-                    console.log(`Node ID: ${targetNode.id} API executed successfully:`, resultData);
+                    console.log(`Node ID: ${targetNode.nodeId} API executed successfully:`, resultData);
                     tmpExecutionResult.push({ 
-                        nodeId: targetNode.id, 
-                        nodeName: targetNode.name,
+                        nodeId: targetNode.nodeId, 
+                        nodeName: targetNode.nodeName,
                         success: true,
                         responseTimeMs: resultData.data?.results?.responseTimeMs || 0,
                         statusCode: resultData.statusCode || response.status,
@@ -216,12 +216,12 @@ export function ApiExecutionPanel() {
                 }
 
             } catch (e) {
-                console.error(`노드 ID: ${targetNode.id} API 실행 중 오류 발생:`, e);
+                console.error(`노드 ID: ${targetNode.nodeId} API 실행 중 오류 발생:`, e);
                 hasError = true;
                 
                 tmpExecutionResult.push({
-                    nodeId: targetNode.id,
-                    nodeName: targetNode.name,
+                    nodeId: targetNode.nodeId,
+                    nodeName: targetNode.nodeName,
                     success: false,
                     responseTimeMs: 0,
                     statusCode: 0,
@@ -274,14 +274,14 @@ export function ApiExecutionPanel() {
                                 <SelectContent>
                                     <h3 className="px-2 py-1 text-sm font-semibold text-gray-500">그룹</h3>
                                     {nodeGroups.map((group) => (
-                                        <SelectItem key={`group-${group.id}`} value={`group-${group.id}`}>
-                                            그룹: {group.name} ({group.nodeIds.length}개 노드)
+                                        <SelectItem key={`group-${group.nodeGroupId}`} value={`group-${group.nodeGroupId}`}>
+                                            그룹: {group.nodeGroupName} ({group.nodeIds?.length || 0}개 노드)
                                         </SelectItem>
                                     ))}
                                     <h3 className="px-2 py-1 text-sm font-semibold text-gray-500">노드</h3>
                                     {nodes.map((node) => (
-                                        <SelectItem key={`node-${node.id}`} value={`node-${node.id}`}>
-                                            노드: {node.name}{node.description ? ` - ${node.description}` : ''}
+                                        <SelectItem key={`node-${node.nodeId}`} value={`node-${node.nodeId}`}>
+                                            노드: {node.nodeName}{node.nodeDesc ? ` - ${node.nodeDesc}` : ''}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -297,8 +297,8 @@ export function ApiExecutionPanel() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {apis.map((api) => (
-                                        <SelectItem key={api.id} value={api.id.toString()}>
-                                            {api.name} ({api.method} {api.uri})
+                                        <SelectItem key={api.apiId} value={api.apiId.toString()}>
+                                            {api.apiName} ({api.method} {api.uri})
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -319,31 +319,31 @@ export function ApiExecutionPanel() {
                         ) : selectedApiParameters.length > 0 ? (
                             <div className="space-y-3 mt-1">
                                 {selectedApiParameters.map((param) => (
-                                    <div key={param.id}>
+                                    <div key={param.apiParameterId}>
                                         <Label 
-                                            htmlFor={`param-${param.name}`} 
+                                            htmlFor={`param-${param.apiParameterName}`} 
                                             className="flex justify-between items-center text-sm"
                                         >
                                             <span>
-                                                {param.name}{' '}
+                                                {param.apiParameterName}{' '}
                                                 <span className="text-gray-500 font-normal">
-                                                    ({param.type})
+                                                    ({param.apiParameterType})
                                                 </span>
-                                                {param.required && (
+                                                {param.apiParameterRequired && (
                                                     <span className="text-red-500 ml-1 font-bold">*</span>
                                                 )}
                                             </span>
-                                            {param.description && (
+                                            {param.apiParameterDesc && (
                                                 <span className="text-xs text-gray-400">
-                                                    {param.description}
+                                                    {param.apiParameterDesc}
                                                 </span>
                                             )}
                                         </Label>
                                         <Input
-                                            id={`param-${param.name}`}
-                                            placeholder={`값 입력${param.required ? ' (필수)' : ''}`}
-                                            value={dynamicParams[param.name] || ''}
-                                            onChange={(e) => handleDynamicParamChange(param.name, e.target.value)}
+                                            id={`param-${param.apiParameterName}`}
+                                            placeholder={`값 입력${param.apiParameterRequired ? ' (필수)' : ''}`}
+                                            value={dynamicParams[param.apiParameterName] || ''}
+                                            onChange={(e) => handleDynamicParamChange(param.apiParameterName, e.target.value)}
                                         />
                                     </div>
                                 ))}
@@ -401,7 +401,7 @@ export function ApiExecutionPanel() {
                     <CardContent>
                         <div className="space-y-4">
                             {executionResult.map((result, idx) => {
-                                const nodeDetail = nodes.find(n => n.id === result.nodeId);
+                                const nodeDetail = nodes.find(n => n.nodeId === result.nodeId);
                                 
                                 return (
                                     <Card 
@@ -422,9 +422,9 @@ export function ApiExecutionPanel() {
                                                             <p className="text-xs text-gray-500 mt-1">
                                                                 {nodeDetail.host}:{nodeDetail.port}
                                                             </p>
-                                                            {nodeDetail.description && (
+                                                            {nodeDetail.nodeDesc && (
                                                                 <p className="text-xs text-gray-600 mt-1">
-                                                                    {nodeDetail.description}
+                                                                    {nodeDetail.nodeDesc}
                                                                 </p>
                                                             )}
                                                         </>

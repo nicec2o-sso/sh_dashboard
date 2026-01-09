@@ -18,14 +18,10 @@ export default function MonitoringDashboard() {
         <Sidebar activeTab={mainTab} onTabChange={setMainTab} />
 
         <main className="flex-1 p-6">
+          {mainTab === 'monitoring' && <NodeMonitoringTab />}
           {mainTab === 'grafana' && <GrafanaDashboardTab />}
-          {mainTab === 'monitoring' && (
-            <NodeMonitoringTab />
-          )}
           {mainTab === 'nodes' && <NodeManagementTab />}
-          {mainTab === 'apis' && (
-            <ApiManagementTab />
-          )}
+          {mainTab === 'apis' && <ApiManagementTab />}
         </main>
       </div>
     </div>

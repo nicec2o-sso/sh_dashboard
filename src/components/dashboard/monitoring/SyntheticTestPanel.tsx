@@ -12,6 +12,7 @@ import { SyntheticTestResults } from '@/components/dashboard/monitoring/Syntheti
 import { ApiTestSection } from '@/components/dashboard/monitoring/ApiTestSection';
 import { SyntheticTest, NodeGroup, Api, Node } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { validateSyntheticTestData } from '@/lib/clientValidation';
 
 // ----------------------------------------------------------------------
 // 🚀 SyntheticTestPanel Component
@@ -37,6 +38,7 @@ export function SyntheticTestPanel() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [nodeGroups, setNodeGroups] = useState<NodeGroup[]>([]);
   const [apis, setApis] = useState<Api[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   // 각 테스트의 확장/축소 상태
   const [expandedTests, setExpandedTests] = useState<Record<number, boolean>>({});
@@ -60,7 +62,7 @@ export function SyntheticTestPanel() {
   const [editingTestId, setEditingTestId] = useState<number | null>(null);
 
   const [newTest, setNewTest] = useState({
-    name: '',
+    syntheticTestName: '',
     targetType: 'node' as 'node' | 'group',
     targetId: '', 
     apiId: '', 
@@ -81,6 +83,7 @@ export function SyntheticTestPanel() {
         nodes: '/api/nodes',
         nodeGroups: '/api/node-groups',
         apis: '/api/apis',
+        tags: '/api/tags',
     };
 
     try {
@@ -95,6 +98,7 @@ export function SyntheticTestPanel() {
             )
         );
 
+        console.log('results:', results);
         const loadedTests = results[0]?.data || [];
         // 각 테스트의 tags가 없으면 빈 배열로 초기화
         const sanitizedTests = (loadedTests as SyntheticTest[]).map(test => ({
@@ -106,6 +110,11 @@ export function SyntheticTestPanel() {
         setNodes(results[1].data as Node[]);
         setNodeGroups(results[2].data as NodeGroup[]);
         setApis(results[3].data as Api[]);
+        
+        // 태그 데이터 처리
+        const loadedTags = results[4]?.data || [];
+        const tagNames = loadedTags.map((tag: any) => tag.tagName).sort();
+        setAllTags(tagNames);
 
     } catch (err) {
       console.error("데이터 로딩 중 오류 발생:", err);
@@ -145,9 +154,38 @@ export function SyntheticTestPanel() {
     
     // 태그 필터 (OR 조건 - 선택된 태그 중 하나라도 있으면 포함)
     if (selectedTags.length > 0) {
-      filtered = filtered.filter((test) => 
-        test.tags.some(tag => selectedTags.includes(tag))
-      );
+      filtered = filtered.filter((test) => {
+        // 1. 테스트 자체의 태그 확인
+        const testHasTag = test.tags.some(tag => selectedTags.includes(tag));
+        
+        // 2. 테스트 대상 노드들의 태그 확인
+        let targetNodeHasTag = false;
+        
+        if (test.targetType === 'node') {
+          // 단일 노드 테스트: 해당 노드의 태그 확인
+          const node = nodes.find(n => n.nodeId === test.targetId);
+          if (node && node.tags) {
+            const nodeTags = node.tags.split(',').map(t => t.trim());
+            targetNodeHasTag = nodeTags.some(tag => selectedTags.includes(tag));
+          }
+        } else if (test.targetType === 'group') {
+          // 그룹 테스트: 그룹에 속한 노드들의 태그 확인
+          const group = nodeGroups.find(g => g.nodeGroupId === test.targetId);
+          if (group) {
+            targetNodeHasTag = group.nodeIds.some(nodeId => {
+              const node = nodes.find(n => n.nodeId === nodeId);
+              if (node && node.tags) {
+                const nodeTags = node.tags.split(',').map(t => t.trim());
+                return nodeTags.some(tag => selectedTags.includes(tag));
+              }
+              return false;
+            });
+          }
+        }
+        
+        // 테스트 태그 또는 대상 노드 태그 중 하나라도 매칭되면 포함
+        return testHasTag || targetNodeHasTag;
+      });
     }
     
     // 노드 필터 (OR 조건 - 선택된 노드 중 하나라도 해당하면 포함)
@@ -156,7 +194,7 @@ export function SyntheticTestPanel() {
         if (test.targetType === 'node') {
           return selectedNodes.includes(test.targetId);
         } else if (test.targetType === 'group') {
-          const group = nodeGroups.find(g => g.id === test.targetId);
+          const group = nodeGroups.find(g => g.nodeGroupId === test.targetId);
           return group ? group.nodeIds.some(nodeId => selectedNodes.includes(nodeId)) : false;
         }
         return false;
@@ -171,22 +209,15 @@ export function SyntheticTestPanel() {
     }
     
     return filtered;
-  }, [selectedTags, selectedNodes, selectedGroups, tests, nodeGroups]);
-
-  const allTags = useMemo(() => {
-    const uniqueTags = new Set(
-        tests.flatMap(test => test.tags)
-    );
-    return Array.from(uniqueTags).sort();
-  }, [tests]);
+  }, [selectedTags, selectedNodes, selectedGroups, tests, nodes, nodeGroups]);
 
   // 각 테스트에 대해 표시할 노드 목록 계산
   const testWithNodes = useMemo(() => {
     return filteredTests.map((test) => {
       if (test.targetType === 'group') {
-        const group = nodeGroups.find(g => g.id === test.targetId);
+        const group = nodeGroups.find(g => g.nodeGroupId === test.targetId);
         const targetNodes = group 
-          ? group.nodeIds.map(nodeId => nodes.find(n => n.id === nodeId)).filter(Boolean) as Node[]
+          ? group.nodeIds.map(nodeId => nodes.find(n => n.nodeId === nodeId)).filter(Boolean) as Node[]
           : [];
         
         return {
@@ -194,16 +225,16 @@ export function SyntheticTestPanel() {
           nodes: targetNodes,
           isGroupTest: true,
           targetData: group,
-          targetName: group?.name || 'Unknown Group'
+          targetName: group?.nodeGroupName || 'Unknown Group'
         };
       } else {
-        const node = nodes.find(n => n.id === test.targetId);
+        const node = nodes.find(n => n.nodeId === test.targetId);
         return {
           test,
           nodes: node ? [node] : [],
           isGroupTest: false,
           targetData: node,
-          targetName: node?.name || 'Unknown Node'
+          targetName: node?.nodeName || 'Unknown Node'
         };
       }
     });
@@ -226,23 +257,19 @@ export function SyntheticTestPanel() {
   // ✅ [수정] 수정 버튼 클릭 핸들러 - API 정보를 더 안전하게 세팅
   const handleEditClick = (test: SyntheticTest) => {
     // API가 실제로 존재하는지 확인
-    alert(JSON.stringify(test));
-    const apiExists = apis.find(api => api.id === test.apiId);
+    // alert(JSON.stringify(test));
+    const apiExists = apis.find(api => api.apiId === test.apiId);
     if (!apiExists) {
-      console.warn(`테스트의 API ID ${test.apiId}를 찾을 수 없습니다. 사용 가능한 API 목록:`, apis.map(a => a.id));
+      console.warn(`테스트의 API ID ${test.apiId}를 찾을 수 없습니다. 사용 가능한 API 목록:`, apis.map(a => a.apiId));
     }
     
-    console.log('수정할 테스트:', test);
-    console.log('API ID:', test.apiId, 'Type:', typeof test.apiId);
-    console.log('사용 가능한 API 목록:', apis.map(a => ({ id: a.id, name: a.name })));
-
-    setEditingTestId(test.id);
+    setEditingTestId(test.syntheticTestId);
     setNewTest({
-      name: test.name,
+      syntheticTestName: test.syntheticTestName,
       targetType: test.targetType,
       targetId: String(test.targetId), // String()을 사용하여 더 안전하게 변환
-      apiId: String(test.apiId), // String()을 사용하여 더 안전하게 변환
-      tags: test.tags.join(', '),
+      apiId: String(test.apiId), 
+      tags: test.tags,
       intervalSeconds: test.intervalSeconds,
       alertThresholdMs: test.alertThresholdMs,
       apiParameterValues: test.apiParameterValues || {},
@@ -254,30 +281,36 @@ export function SyntheticTestPanel() {
   const handleDeleteClick = (test: SyntheticTest) => {
     setDeleteConfirmDialog({
       isOpen: true,
-      testId: test.id,
-      testName: test.name,
+      testId: test.syntheticTestId,
+      testName: test.syntheticTestName,
     });
   };
 
   const handleCreateTest = async () => {
-    if (!newTest.name || !newTest.targetId || !newTest.apiId) {
-        alert('필수 입력 항목을 모두 채워주세요.');
-        return;
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateSyntheticTestData({
+      syntheticTestName: newTest.syntheticTestName,
+      targetType: newTest.targetType,
+      targetId: Number(newTest.targetId),
+      apiId: Number(newTest.apiId),
+      tags: newTest.tags, 
+      intervalSeconds: Number(newTest.intervalSeconds),
+      alertThresholdMs: Number(newTest.alertThresholdMs),
+    });
+
+    if (validationError) {
+      alert(validationError);
+      return;
     }
-    
+  
     setIsCreating(true);
     try {
-        const tagsArray = newTest.tags
-            .split(',') 
-            .map(t => t.trim()) 
-            .filter(t => t); 
-
-        const testToCreate: Omit<SyntheticTest, 'id' | 'createdAt'> = {
-            name: newTest.name,
+        const testToCreate: Omit<SyntheticTest, 'syntheticTestId' | 'createdAt'> = {
+            syntheticTestName: newTest.syntheticTestName,
             targetType: newTest.targetType,
             targetId: Number(newTest.targetId),
             apiId: Number(newTest.apiId),
-            tags: tagsArray, 
+            tags: newTest.tags, 
             intervalSeconds: Number(newTest.intervalSeconds),
             alertThresholdMs: Number(newTest.alertThresholdMs),
             apiParameterValues: newTest.apiParameterValues, // ✅ [추가]
@@ -300,15 +333,10 @@ export function SyntheticTestPanel() {
         
         console.log('Created test:', createdTest);
         
-        // tags가 없으면 빈 배열로 초기화
-        if (!createdTest.tags) {
-          createdTest.tags = [];
-        }
-        
         setTests(prev => [...prev, createdTest]);
         
         setNewTest({ 
-          name: '', 
+          syntheticTestName: '', 
           targetType: 'node', 
           targetId: '', 
           apiId: '', 
@@ -330,24 +358,32 @@ export function SyntheticTestPanel() {
 
   // 테스트 수정 핸들러
   const handleUpdateTest = async () => {
-    if (!editingTestId || !newTest.name || !newTest.targetId || !newTest.apiId) {
-        alert('필수 입력 항목을 모두 채워주세요.');
-        return;
+
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateSyntheticTestData({
+      syntheticTestName: newTest.syntheticTestName,
+      targetType: newTest.targetType,
+      targetId: Number(newTest.targetId),
+      apiId: Number(newTest.apiId),
+      tags: newTest.tags, 
+      intervalSeconds: Number(newTest.intervalSeconds),
+      alertThresholdMs: Number(newTest.alertThresholdMs),
+    });
+
+    if (validationError) {
+      alert(validationError);
+      return;
     }
-    
+  
     setIsUpdating(true);
     try {
-        const tagsArray = newTest.tags
-            .split(',') 
-            .map(t => t.trim()) 
-            .filter(t => t); 
 
-        const testToUpdate: Omit<SyntheticTest, 'id' | 'createdAt'> = {
-            name: newTest.name,
+        const testToUpdate: Omit<SyntheticTest, 'syntheticTestId' | 'createdAt'> = {
+            syntheticTestName: newTest.syntheticTestName,
             targetType: newTest.targetType,
             targetId: Number(newTest.targetId),
             apiId: Number(newTest.apiId),
-            tags: tagsArray, 
+            tags: newTest.tags, 
             intervalSeconds: Number(newTest.intervalSeconds),
             alertThresholdMs: Number(newTest.alertThresholdMs),
             apiParameterValues: newTest.apiParameterValues, // ✅ [추가]
@@ -370,18 +406,13 @@ export function SyntheticTestPanel() {
         
         console.log('Updated test:', updatedTest);
         
-        // tags가 없으면 빈 배열로 초기화
-        if (!updatedTest.tags) {
-          updatedTest.tags = [];
-        }
-        
         // 기존 테스트 목록에서 업데이트
         setTests(prev => prev.map(test => 
-          test.id === editingTestId ? updatedTest : test
+          test.syntheticTestId === editingTestId ? updatedTest : test
         ));
         
         setNewTest({ 
-          name: '', 
+          syntheticTestName: '', 
           targetType: 'node', 
           targetId: '', 
           apiId: '', 
@@ -418,7 +449,7 @@ export function SyntheticTestPanel() {
         }
 
         // 성공 시 테스트 목록에서 제거
-        setTests(prev => prev.filter(test => test.id !== deleteConfirmDialog.testId));
+        setTests(prev => prev.filter(test => test.syntheticTestId !== deleteConfirmDialog.testId));
         
         // 다이얼로그 닫기
         setDeleteConfirmDialog({
@@ -462,7 +493,7 @@ export function SyntheticTestPanel() {
   // 생성/수정 취소 핸들러
   const handleCancel = () => {
     setNewTest({ 
-      name: '', 
+      syntheticTestName: '', 
       targetType: 'node', 
       targetId: '', 
       apiId: '', 
@@ -525,6 +556,9 @@ export function SyntheticTestPanel() {
         </Card>
       ) : (
         <>
+           {/* *************************************
+            * Synthetic Test 목록 시작
+            *****************************************/}
           {subView === 'list' ? (
             <>
               {/* 필터 패널 */}
@@ -594,25 +628,25 @@ export function SyntheticTestPanel() {
                           <div className="text-sm text-gray-500">노드 없음</div>
                         ) : (
                           nodes.map((node) => (
-                            <div key={node.id} className="flex items-center space-x-2">
+                            <div key={node.nodeId} className="flex items-center space-x-2">
                               <Checkbox
-                                id={`node-${node.id}`}
-                                checked={selectedNodes.includes(node.id)}
+                                id={`node-${node.nodeId}`}
+                                checked={selectedNodes.includes(node.nodeId)}
                                 onCheckedChange={(checked) => {
                                   if (checked) {
-                                    setSelectedNodes([...selectedNodes, node.id]);
+                                    setSelectedNodes([...selectedNodes, node.nodeId]);
                                   } else {
-                                    setSelectedNodes(selectedNodes.filter(n => n !== node.id));
+                                    setSelectedNodes(selectedNodes.filter(n => n !== node.nodeId));
                                   }
                                 }}
                               />
                               <label
-                                htmlFor={`node-${node.id}`}
+                                htmlFor={`node-${node.nodeId}`}
                                 className="text-sm cursor-pointer"
                               >
-                                <div>{node.name}</div>
-                                {node.description && (
-                                  <div className="text-xs text-gray-500">{node.description}</div>
+                                <div>{node.nodeName}</div>
+                                {node.nodeDesc && (
+                                  <div className="text-xs text-gray-500">{node.nodeDesc}</div>
                                 )}
                               </label>
                             </div>
@@ -629,23 +663,23 @@ export function SyntheticTestPanel() {
                           <div className="text-sm text-gray-500">그룹 없음</div>
                         ) : (
                           nodeGroups.map((group) => (
-                            <div key={group.id} className="flex items-center space-x-2">
+                            <div key={group.nodeGroupId} className="flex items-center space-x-2">
                               <Checkbox
-                                id={`group-${group.id}`}
-                                checked={selectedGroups.includes(group.id)}
+                                id={`group-${group.nodeGroupId}`}
+                                checked={selectedGroups.includes(group.nodeGroupId)}
                                 onCheckedChange={(checked) => {
                                   if (checked) {
-                                    setSelectedGroups([...selectedGroups, group.id]);
+                                    setSelectedGroups([...selectedGroups, group.nodeGroupId]);
                                   } else {
-                                    setSelectedGroups(selectedGroups.filter(g => g !== group.id));
+                                    setSelectedGroups(selectedGroups.filter(g => g !== group.nodeGroupId));
                                   }
                                 }}
                               />
                               <label
-                                htmlFor={`group-${group.id}`}
+                                htmlFor={`group-${group.nodeGroupId}`}
                                 className="text-sm cursor-pointer"
                               >
-                                {group.name}
+                                {group.nodeGroupName}
                               </label>
                             </div>
                           ))
@@ -692,15 +726,15 @@ export function SyntheticTestPanel() {
                 </Card>
               ) : (
                 testWithNodes.map(({ test, nodes: targetNodes, isGroupTest, targetData, targetName }) => {
-                  const isExpanded = expandedTests[test.id] ?? true; // 기본값: 확장
+                  const isExpanded = expandedTests[test.syntheticTestId] ?? true; // 기본값: 확장
                   
                   return (
-                    <Card key={test.id}>
+                    <Card key={test.syntheticTestId}>
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <CardTitle className="text-lg">{test.name}</CardTitle>
+                              <CardTitle className="text-lg">{test.syntheticTestName}</CardTitle>
                               <Badge 
                                 variant="outline" 
                                 className="cursor-pointer hover:bg-gray-100"
@@ -721,15 +755,11 @@ export function SyntheticTestPanel() {
                             <CardDescription>
                               대상: {targetName} | 실행 주기: {test.intervalSeconds}초 | 알럿 기준: {test.alertThresholdMs}ms
                             </CardDescription>
-                            {test.tags && test.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {test.tags.map((tag) => (
-                                  <Badge key={tag} variant="secondary" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <Badge key={test.tags} variant="secondary" className="text-xs">
+                                {test.tags}
+                              </Badge>
+                            </div>
                           </div>
                           <div className="flex gap-2">
                             {/* 수정 버튼 */}
@@ -753,7 +783,7 @@ export function SyntheticTestPanel() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => toggleTestExpansion(test.id)}
+                                onClick={() => toggleTestExpansion(test.syntheticTestId)}
                               >
                                 {isExpanded ? (
                                   <>
@@ -776,13 +806,13 @@ export function SyntheticTestPanel() {
                         <CardContent className="space-y-4">
                           {targetNodes.map((node) => (
                             <SyntheticTestResults 
-                              key={`${test.id}-${node.id}`}
-                              syntheticTestId={test.id}
-                              nodeId={node.id}
-                              nodeName={node.name}
+                              key={`${test.syntheticTestId}-${node.nodeId}`}
+                              syntheticTestId={test.syntheticTestId}
+                              nodeId={node.nodeId}
+                              nodeName={node.nodeName}
                               isGroupTest={isGroupTest}
                               showNodeHeader={true}
-                              onExecute={() => handleExecuteTest(test.id)}
+                              onExecute={() => handleExecuteTest(test.syntheticTestId)}
                               onNodeClick={() => handleTargetClick('node', node)}
                               timeRange={timeRange}
                             />
@@ -795,7 +825,9 @@ export function SyntheticTestPanel() {
               )}
             </>
           ) : (
-            /* 생성/수정 뷰 */
+            /* *************************************
+            * Synthetic Test 테스트 생성/수정 뷰 시작
+            *****************************************/
             <Card>
               <CardHeader>
                 <CardTitle>{subView === 'edit' ? '테스트 수정' : '새 Synthetic Test 생성'}</CardTitle>
@@ -804,10 +836,10 @@ export function SyntheticTestPanel() {
                 
                 {/* 테스트 이름 */}
                 <div>
-                  <Label>테스트 이름</Label>
+                  <Label>테스트 이름<span className="text-red-500">*</span></Label>
                   <Input
-                    value={newTest.name}
-                    onChange={(e) => setNewTest({ ...newTest, name: e.target.value })}
+                    value={newTest.syntheticTestName}
+                    onChange={(e) => setNewTest({ ...newTest, syntheticTestName: e.target.value })}
                     placeholder="예: Web Health Monitor"
                   />
                 </div>
@@ -815,7 +847,7 @@ export function SyntheticTestPanel() {
                 <div className="grid grid-cols-2 gap-4">
                   {/* 대상 타입 선택 */}
                   <div>
-                    <Label>대상 타입</Label>
+                    <Label>대상 타입<span className="text-red-500">*</span></Label>
                     <Select
                       value={newTest.targetType}
                       onValueChange={(v: 'node' | 'group') => setNewTest({ ...newTest, targetType: v, targetId: '' })}
@@ -832,7 +864,7 @@ export function SyntheticTestPanel() {
 
                   {/* 대상 선택 */}
                   <div>
-                    <Label>대상 선택</Label>
+                    <Label>대상 선택<span className="text-red-500">*</span></Label>
                     <Select value={newTest.targetId} onValueChange={(v) => setNewTest({ ...newTest, targetId: v })}>
                       <SelectTrigger>
                         <SelectValue placeholder="선택" />
@@ -840,13 +872,13 @@ export function SyntheticTestPanel() {
                       <SelectContent>
                         {newTest.targetType === 'group'
                           ? nodeGroups.map((g) => (
-                              <SelectItem key={g.id} value={g.id.toString()}>
-                                {g.name}
+                              <SelectItem key={g.nodeGroupId} value={g.nodeGroupId.toString()}>
+                                {g.nodeGroupName}
                               </SelectItem>
                             ))
                           : nodes.map((n) => (
-                              <SelectItem key={n.id} value={n.id.toString()}>
-                                {n.name}{n.description ? ` - ${n.description}` : ''}
+                              <SelectItem key={n.nodeId} value={n.nodeId.toString()}>
+                                {n.nodeName}{n.nodeDesc ? ` - ${n.nodeDesc}` : ''}
                               </SelectItem>
                             ))}
                       </SelectContent>
@@ -856,7 +888,7 @@ export function SyntheticTestPanel() {
 
                 {/* API 선택 */}
                 <div>
-                  <Label>API</Label>
+                  <Label>API<span className="text-red-500">*</span></Label>
                   <Select 
                     value={newTest.apiId} 
                     onValueChange={(v) => setNewTest({ 
@@ -870,8 +902,8 @@ export function SyntheticTestPanel() {
                     </SelectTrigger>
                     <SelectContent>
                       {apis.map((api) => (
-                        <SelectItem key={api.id} value={api.id.toString()}>
-                          [{api.method}] {api.name} ({api.uri})
+                        <SelectItem key={api.apiId} value={api.apiId.toString()}>
+                          [{api.method}] {api.apiName} ({api.uri})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -905,7 +937,7 @@ export function SyntheticTestPanel() {
                 <div className="grid grid-cols-2 gap-4">
                   {/* 실행 간격 */}
                   <div>
-                    <Label>실행 간격 (초)</Label>
+                    <Label>실행 간격 (초)<span className="text-red-500">*</span></Label>
                     <Input
                       type="number"
                       value={newTest.intervalSeconds}
@@ -915,7 +947,7 @@ export function SyntheticTestPanel() {
 
                   {/* 알럿 기준 */}
                   <div>
-                    <Label>알럿 기준 (밀리초)</Label>
+                    <Label>알럿 기준 (밀리초)<span className="text-red-500">*</span></Label>
                     <Input
                       type="number"
                       value={newTest.alertThresholdMs}
@@ -960,7 +992,7 @@ export function SyntheticTestPanel() {
           <DialogHeader>
             <DialogTitle>테스트 삭제 확인</DialogTitle>
             <DialogDescription>
-              정말로 "{deleteConfirmDialog.testName}" 테스트를 삭제하시겠습니까?
+              정말로 &quot;{deleteConfirmDialog.testName}&quot; 테스트를 삭제하시겠습니까?
               <br />
               <span className="text-red-600 font-semibold">이 작업은 되돌릴 수 없습니다.</span>
             </DialogDescription>
@@ -1011,11 +1043,11 @@ export function SyntheticTestPanel() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-gray-600">ID</div>
-                      <div className="font-medium">{selectedTarget.data.id}</div>
+                      <div className="font-medium">{selectedTarget?.type === 'group' ? (selectedTarget.data as NodeGroup).nodeGroupId : (selectedTarget.data as Node).nodeId}</div>
                     </div>
                     <div>
                       <div className="text-sm text-gray-600">이름</div>
-                      <div className="font-medium">{selectedTarget.data.name}</div>
+                      <div className="font-medium">{selectedTarget?.type === 'group' ? (selectedTarget.data as NodeGroup).nodeGroupName : (selectedTarget.data as Node).nodeName}</div>
                     </div>
                   </div>
 
@@ -1025,10 +1057,10 @@ export function SyntheticTestPanel() {
                         <div className="text-sm text-gray-600">호스트</div>
                         <div className="font-medium">{selectedTarget.data.host}</div>
                       </div>
-                      {selectedTarget.data.description && (
+                      {selectedTarget.data.nodeDesc && (
                         <div>
                           <div className="text-sm text-gray-600">설명</div>
-                          <div className="font-medium">{selectedTarget.data.description}</div>
+                          <div className="font-medium">{selectedTarget.data.nodeDesc}</div>
                         </div>
                       )}
                     </>
@@ -1039,16 +1071,16 @@ export function SyntheticTestPanel() {
                       <div className="text-sm text-gray-600 mb-2">포함된 노드 ({selectedTarget.data.nodeIds.length}개)</div>
                       <div className="space-y-2">
                         {selectedTarget.data.nodeIds.map((nodeId: number) => {
-                          const node = nodes.find(n => n.id === nodeId);
+                          const node = nodes.find(n => n.nodeId === nodeId);
                           return node ? (
                             <div key={nodeId} className="p-3 border rounded">
                               <div className="flex items-center justify-between mb-1">
-                                <div className="font-medium">{node.name}</div>
-                                <Badge variant="outline">ID: {node.id}</Badge>
+                                <div className="font-medium">{node.nodeName}</div>
+                                <Badge variant="outline">ID: {node.nodeId}</Badge>
                               </div>
                               <div className="text-sm text-gray-500">{node.host}</div>
-                              {node.description && (
-                                <div className="text-sm text-gray-600 mt-1">{node.description}</div>
+                              {node.nodeDesc && (
+                                <div className="text-sm text-gray-600 mt-1">{node.nodeDesc}</div>
                               )}
                             </div>
                           ) : null;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SyntheticTestService } from '@/services/syntheticTestService';
+import { SyntheticTestServiceDB } from '@/services/syntheticTestService.database';
 
 /**
  * POST /api/synthetic-tests/[id]/execute - 합성 테스트 실행
@@ -10,13 +11,12 @@ export async function POST(
 ) {
   try {
     const id = parseInt((await context.params).id, 10);
-    const resolvedParams = await context.params; 
     let body = await request.json();
     if(!body) {
       body = {};
     }
     
-    const test = SyntheticTestService.getTestById(id);
+    const test = await SyntheticTestServiceDB.getSyntheticTestById(id);
     if (!test) {
       return NextResponse.json(
         { success: false, error: '합성 테스트를 찾을 수 없습니다' },
@@ -31,7 +31,7 @@ export async function POST(
       success: true,
       data: {
         testId: id,
-        testName: test.name,
+        testName: test.syntheticTestName,
         executedAt: new Date().toISOString(),
         results,
       },

@@ -4,23 +4,23 @@ import { NodeService } from './nodeService';
 // 샘플 데이터
 let nodeGroups: NodeGroup[] = [
   { 
-    id: 1, 
-    name: 'Web Cluster', 
-    description: 'All web servers', 
+    nodeGroupId: 1, 
+    nodeGroupName: 'Web Cluster', 
+    nodeGroupDesc: 'All web servers', 
     nodeIds: [1, 2],
     createdAt: new Date().toISOString()
   },
   { 
-    id: 2, 
-    name: 'Backend Services', 
-    description: 'Database and cache', 
+    nodeGroupId: 2, 
+    nodeGroupName: 'Backend Services', 
+    nodeGroupDesc: 'Database and cache', 
     nodeIds: [3, 4],
     createdAt: new Date().toISOString()
   },
   { 
-    id: 3, 
-    name: 'Health check!', 
-    description: 'Nodes for synthetic testing', 
+    nodeGroupId: 3, 
+    nodeGroupName: 'Health check!', 
+    nodeGroupDesc: 'Nodes for synthetic testing', 
     nodeIds: [1, 2, 3],
     createdAt: new Date().toISOString()
   },
@@ -40,9 +40,9 @@ export class NodeGroupService {
   /**
    * ID로 노드 그룹 조회
    */
-  static getNodeGroupById(id: number): NodeGroup | null {
-    console.log('NodeGroupService getNodeGroupById called with id:', id);
-    return nodeGroups.find(group => group.id === id) || null;
+  static getNodeGroupById(nodeGroupId: number): NodeGroup | null {
+    console.log('NodeGroupService getNodeGroupById called with id:', nodeGroupId);
+    return nodeGroups.find(group => group.nodeGroupId === nodeGroupId) || null;
   }
 
   /**
@@ -60,9 +60,9 @@ export class NodeGroupService {
     }
 
     const newGroup: NodeGroup = {
-      id: nextId++,
-      name: dto.name,
-      description: dto.description,
+      nodeGroupId: nextId++,
+      nodeGroupName: dto.nodeGroupName,
+      nodeGroupDesc: dto.nodeGroupDesc,
       nodeIds: dto.nodeIds,
       createdAt: new Date().toISOString(),
     };
@@ -74,9 +74,9 @@ export class NodeGroupService {
   /**
    * 노드 그룹 수정
    */
-  static updateNodeGroup(id: number, dto: UpdateNodeGroupDto): NodeGroup | null {
-    console.log('NodeGroupService updateNodeGroup called with id:', id, 'dto:', dto);
-    const groupIndex = nodeGroups.findIndex(group => group.id === id);
+  static updateNodeGroup(nodeGroupId: number, dto: UpdateNodeGroupDto): NodeGroup | null {
+    console.log('NodeGroupService updateNodeGroup called with nodeGroupId:', nodeGroupId, 'dto:', dto);
+    const groupIndex = nodeGroups.findIndex(group => group.nodeGroupId === nodeGroupId);
     if (groupIndex === -1) return null;
 
     // nodeIds가 제공된 경우 유효성 검증
@@ -102,10 +102,10 @@ export class NodeGroupService {
   /**
    * 노드 그룹 삭제
    */
-  static deleteNodeGroup(id: number): boolean {
-    console.log('NodeGroupService deleteNodeGroup called with id:', id);
+  static deleteNodeGroup(nodeGroupId: number): boolean {
+    console.log('NodeGroupService deleteNodeGroup called with nodeGroupId:', nodeGroupId);
     const initialLength = nodeGroups.length;
-    nodeGroups = nodeGroups.filter(group => group.id !== id);
+    nodeGroups = nodeGroups.filter(group => group.nodeGroupId !== nodeGroupId);
     return nodeGroups.length < initialLength;
   }
 
@@ -135,7 +135,7 @@ export class NodeGroupService {
     const group = this.getNodeGroupById(groupId);
     if (!group) return null;
 
-    const updatedNodeIds = group.nodeIds.filter(id => id !== nodeId);
+    const updatedNodeIds = group.nodeIds.filter(nodeId => nodeId !== nodeId);
     return this.updateNodeGroup(groupId, { nodeIds: updatedNodeIds });
   }
 
@@ -161,10 +161,10 @@ export class NodeGroupService {
   /**
    * 그룹명으로 검색
    */
-  static searchNodeGroupsByName(name: string): NodeGroup[] {
-    console.log('NodeGroupService searchNodeGroupsByName called with name:', name);
+  static searchNodeGroupsByName(nodeGroupName: string): NodeGroup[] {
+    console.log('NodeGroupService searchNodeGroupsByName called with nodeGroupName:', nodeGroupName);
     return nodeGroups.filter(group => 
-      group.name.toLowerCase().includes(name.toLowerCase())
+      group.nodeGroupName.toLowerCase().includes(nodeGroupName.toLowerCase())
     );
   }
 }

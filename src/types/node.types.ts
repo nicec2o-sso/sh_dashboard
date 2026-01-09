@@ -16,15 +16,17 @@
  * @property port - 노드의 포트 번호
  * @property status - 노드의 현재 상태 (healthy: 정상, warning: 경고, error: 오류)
  * @property description - 노드에 대한 추가 설명 (선택사항)
+ * @property tags - 노드의 태그 목록 (선택사항)
  * @property createdAt - 노드 생성 일시 (ISO 8601 형식)
  */
 export interface Node {
-  id: number;
-  name: string;
+  nodeId: number;
+  nodeName: string;
   host: string;
   port: number;
-  status: 'healthy' | 'warning' | 'error';
-  description?: string;
+  nodeStatus: 'active' | 'inactive' | 'warning' | 'error';
+  nodeDesc?: string;
+  tags?: string; // 태그 문자열 (콤마로 구분)
   createdAt?: string;
 }
 
@@ -37,11 +39,15 @@ export interface Node {
  * @property name - 생성할 노드의 이름
  * @property host - 생성할 노드의 호스트 주소
  * @property port - 생성할 노드의 포트 번호
+ * @property tags - 태그 문자열 (콤마로 구분, 선택사항)
  */
 export interface CreateNodeDto {
-  name: string;
+  nodeName: string;
   host: string;
   port: number;
+  nodeStatus?: 'active' | 'inactive' | 'warning' | 'error';
+  nodeDesc?: string;
+  tags?: string; // 태그 문자열 추가
 }
 
 /**
@@ -56,8 +62,10 @@ export interface CreateNodeDto {
  * @property status - 수정할 노드 상태 (선택)
  */
 export interface UpdateNodeDto {
-  name?: string;
+  nodeName?: string;
   host?: string;
   port?: number;
-  status?: 'healthy' | 'warning' | 'error';
+  nodeStatus?: 'active' | 'inactive' | 'warning' | 'error';
+  nodeDesc?: string;
+  tags?: string; // 태그 문자열 추가
 }

@@ -1,65 +1,38 @@
 /**
- * Node API 라우트 (통합 DB 버전)
+ * 노드 관리 API
  * 
- * 환경변수 USE_DATABASE에 따라 자동으로 MySQL 또는 Altibase를 사용합니다.
- * serviceInitializer가 자동으로 적절한 Repository를 선택하므로
- * 이 파일에서는 데이터베이스 타입을 신경 쓸 필요가 없습니다.
+ * 경로: /api/nodes
  * 
- * 지원하는 작업:
- * - GET /api/nodes - 모든 노드 조회 (필터링 지원)
- * - POST /api/nodes - 노드 생성
+ * 기능:
+ * - GET: 노드 목록 조회
+ * - POST: 새 노드 생성
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { nodeService, DATABASE_TYPE } from '@/services/serviceInitializer';
-import { CreateNodeDto } from '@/types';
-import { ensureDatabaseInitialized } from '@/middleware/dbInit';
+import { NodeServiceDB } from '@/services/nodeService.database';
 
 /**
- * GET /api/nodes - 모든 노드 조회
- * 
- * 쿼리 파라미터:
- * - status: 상태별 필터링 (healthy, warning, error)
- * - host: 호스트명으로 검색 (부분 일치)
- * 
- * @example
  * GET /api/nodes
- * GET /api/nodes?status=healthy
- * GET /api/nodes?host=192.168
+ * 노드 목록 조회
  */
 export async function GET(request: NextRequest) {
   try {
-    // 데이터베이스 초기화 보장
-    await ensureDatabaseInitialized();
+    const nodes = await NodeServiceDB.getAllNodes();
 
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'healthy' | 'warning' | 'error' | null;
-    const host = searchParams.get('host');
-
-    let nodes;
-    
-    // 필터링
-    if (status) {
-      nodes = await nodeService.getNodesByStatus(status);
-    } else if (host) {
-      nodes = await nodeService.searchNodesByHost(host);
-    } else {
-      nodes = await nodeService.getAllNodes();
-    }
+    console.log('[Node Route] Nodes retrieved:', nodes.length);
 
     return NextResponse.json({
       success: true,
-      database: DATABASE_TYPE, // 현재 사용 중인 DB 타입 포함
       data: nodes,
     });
   } catch (error) {
-    console.error('[API /nodes GET] Error:', error);
+    console.error('[Node Route] Error fetching nodes:', error);
+    
     return NextResponse.json(
       { 
         success: false, 
-        database: DATABASE_TYPE,
-        error: '노드 조회 중 오류가 발생했습니다',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to fetch nodes',
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -67,62 +40,55 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/nodes - 노드 생성
- * 
- * Request Body:
- * {
- *   "name": "Web Server 1",
- *   "host": "192.168.1.10",
- *   "port": 8080,
- *   "description": "Primary web server" (optional)
- * }
+ * POST /api/nodes
+ * 새 노드 생성
  */
 export async function POST(request: NextRequest) {
   try {
-    // 데이터베이스 초기화 보장
-    await ensureDatabaseInitialized();
+    const body = await request.json();
+    console.log('[Node Route] Creating node:', body);
 
-    const body: CreateNodeDto = await request.json();
+    // 서비스 호출로 노드 생성
+    try {
+      const newNode = await NodeServiceDB.createNode({
+        nodeName: body.nodeName,
+        host: body.host,
+        port: body.port,
+        nodeStatus: body.nodeStatus,
+        nodeDesc: body.nodeDesc,
+        tags: body.tags,
+      });
 
-    // 유효성 검증
-    if (!body.name || !body.host || !body.port) {
       return NextResponse.json(
-        { 
-          success: false, 
-          database: DATABASE_TYPE,
-          error: '필수 필드가 누락되었습니다 (name, host, port)' 
+        {
+          success: true,
+          data: newNode,
+          message: 'Node created successfully',
         },
-        { status: 400 }
+        { status: 201 }
       );
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('already exists')) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: serviceError.message,
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    if (body.port < 1 || body.port > 65535) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          database: DATABASE_TYPE,
-          error: '올바른 포트 번호를 입력하세요 (1-65535)' 
-        },
-        { status: 400 }
-      );
-    }
-
-    // 노드 생성 (Service가 자동으로 적절한 Repository 사용)
-    const newNode = await nodeService.createNode(body);
-
-    return NextResponse.json({
-      success: true,
-      database: DATABASE_TYPE,
-      data: newNode,
-    }, { status: 201 });
   } catch (error) {
-    console.error('[API /nodes POST] Error:', error);
+    console.error('[Node Route] Error creating node:', error);
+    
     return NextResponse.json(
       { 
         success: false, 
-        database: DATABASE_TYPE,
-        error: '노드 생성 중 오류가 발생했습니다',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to create node',
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

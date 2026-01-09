@@ -1,36 +1,26 @@
 /**
- * Oracle Autonomous Database 연결 설정
+ * Oracle 데이터베이스 연결 래퍼 (자동 초기화 지원)
  * 
- * 이 파일은 Oracle Autonomous Database와의 연결을 관리합니다.
- * Oracle Wallet을 사용한 보안 연결과 기본 연결 방식을 모두 지원합니다.
+ * 이 파일은 Oracle 데이터베이스 연결을 자동으로 관리합니다.
+ * 모든 쿼리 실행 전에 자동으로 연결 풀을 초기화합니다.
  * 
- * 환경변수 설정 필요:
- * 
- * Wallet 방식 (Autonomous Database):
- * - ORACLE_WALLET_LOCATION: Wallet 파일 경로
- * - ORACLE_WALLET_PASSWORD: Wallet 비밀번호
- * - ORACLE_CONNECTION_STRING: TNS 연결 문자열 (예: mydb_high)
- * - ORACLE_USER: 데이터베이스 사용자명
- * - ORACLE_PASSWORD: 데이터베이스 비밀번호
- * 
- * 기본 방식:
- * - ORACLE_HOST: Oracle 서버 주소
- * - ORACLE_PORT: Oracle 포트 (기본값: 1521)
- * - ORACLE_SERVICE_NAME: 서비스 이름
- * - ORACLE_USER: 데이터베이스 사용자명
- * - ORACLE_PASSWORD: 데이터베이스 비밀번호
+ * 특징:
+ * - 자동 초기화: 첫 쿼리 실행 시 자동으로 연결 풀 생성
+ * - 중복 초기화 방지: 동시에 여러 요청이 와도 한 번만 초기화
+ * - 싱글톤 패턴: 애플리케이션 전체에서 하나의 연결 풀만 사용
  */
 
 import oracledb from 'oracledb';
+import fs from 'fs';
+import path from 'path';
 
-/**
- * Oracle 연결 타입
- */
+// Oracle 전역 설정
+oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
+oracledb.fetchAsString = [oracledb.CLOB];
+oracledb.autoCommit = false;
+
 type OracleConnectionType = 'wallet' | 'basic';
 
-/**
- * Oracle Wallet 연결 설정 인터페이스
- */
 interface OracleWalletConfig {
   user: string;
   password: string;
@@ -39,33 +29,32 @@ interface OracleWalletConfig {
   walletPassword: string;
 }
 
-/**
- * Oracle 기본 연결 설정 인터페이스
- */
 interface OracleBasicConfig {
   user: string;
   password: string;
-  connectString: string; // host:port/service_name
+  connectString: string;
 }
 
-/**
- * Oracle 연결 설정 통합 타입
- */
 type OracleConfig = OracleWalletConfig | OracleBasicConfig;
 
-/**
- * 환경변수에서 Oracle 설정 로드
- * 
- * ORACLE_WALLET_LOCATION이 설정되어 있으면 Wallet 방식,
- * 없으면 기본 연결 방식을 사용합니다.
- * 
- * @returns Oracle 연결 설정 객체와 연결 타입
- * @throws 필수 환경변수가 없을 경우 에러 발생
- */
+interface ReturningResult<T = any> {
+  rowsAffected: number;
+  outBinds?: Record<string, T[]>;
+  lastInsertId?: number;
+}
+
+interface TransactionOptions {
+  autoCommit?: boolean;
+  timeout?: number;
+}
+
+interface QueryOptions {
+  autoCommit?: boolean;
+  outBinds?: Record<string, oracledb.BindParameter>;
+}
+
 function getOracleConfig(): { config: OracleConfig; type: OracleConnectionType } {
-  // Wallet 방식 확인
   if (process.env.ORACLE_WALLET_LOCATION) {
-    // Wallet 필수 환경변수 검증
     if (!process.env.ORACLE_USER || !process.env.ORACLE_PASSWORD) {
       throw new Error('ORACLE_USER and ORACLE_PASSWORD are required for Wallet connection');
     }
@@ -81,14 +70,10 @@ function getOracleConfig(): { config: OracleConfig; type: OracleConnectionType }
       walletPassword: process.env.ORACLE_WALLET_PASSWORD || '',
     };
 
-    console.log('[Oracle] Using Wallet connection mode');
-    console.log('[Oracle] Wallet location:', walletConfig.walletLocation);
-    console.log('[Oracle] Connection string:', walletConfig.connectionString);
-
+    console.log('[Oracle] Using Wallet connection mode (Thin)');
     return { config: walletConfig, type: 'wallet' };
   }
 
-  // 기본 연결 방식
   if (!process.env.ORACLE_USER || !process.env.ORACLE_PASSWORD) {
     throw new Error('ORACLE_USER and ORACLE_PASSWORD are required');
   }
@@ -107,51 +92,83 @@ function getOracleConfig(): { config: OracleConfig; type: OracleConnectionType }
     connectString: `${host}:${port}/${serviceName}`,
   };
 
-  console.log('[Oracle] Using basic connection mode');
-  console.log('[Oracle] Connect string:', basicConfig.connectString);
-
+  console.log('[Oracle] Using basic connection mode (Thin)');
   return { config: basicConfig, type: 'basic' };
 }
 
-/**
- * Wallet 설정이 있는지 확인
- */
 function isWalletConfig(config: OracleConfig): config is OracleWalletConfig {
   return 'walletLocation' in config;
 }
 
-/**
- * Oracle 데이터베이스 연결 풀
- * 
- * 싱글톤 패턴으로 구현하여 애플리케이션 전체에서 하나의 연결 풀만 사용합니다.
- */
+function parseTnsnames(walletLocation: string, serviceName: string): string | null {
+  try {
+    const tnsnamesPath = path.join(walletLocation, 'tnsnames.ora');
+    
+    if (!fs.existsSync(tnsnamesPath)) {
+      console.error('[Oracle] tnsnames.ora not found at:', tnsnamesPath);
+      return null;
+    }
+
+    const content = fs.readFileSync(tnsnamesPath, 'utf-8');
+    const lines = content.split('\n');
+    const serviceLineIndex = lines.findIndex(line => 
+      line.trim().toLowerCase().startsWith(serviceName.toLowerCase())
+    );
+    
+    if (serviceLineIndex === -1) {
+      console.error('[Oracle] Service not found in tnsnames.ora:', serviceName);
+      return null;
+    }
+    
+    let serviceConfig = lines[serviceLineIndex];
+    for (let i = serviceLineIndex + 1; i < lines.length; i++) {
+      if (lines[i].trim().startsWith('(') || lines[i].trim() === '') {
+        serviceConfig += lines[i];
+      } else {
+        break;
+      }
+    }
+    
+    const protocolMatch = serviceConfig.match(/protocol\s*=\s*(tcps?)/i);
+    const hostMatch = serviceConfig.match(/host\s*=\s*([^)]+)\)/i);
+    const portMatch = serviceConfig.match(/port\s*=\s*(\d+)/i);
+    const serviceMatch = serviceConfig.match(/service_name\s*=\s*([^)]+)\)/i);
+    
+    if (hostMatch && portMatch && serviceMatch) {
+      const protocol = protocolMatch ? protocolMatch[1] : 'tcp';
+      const host = hostMatch[1].trim();
+      const port = portMatch[1];
+      const service = serviceMatch[1].trim();
+      
+      const connectString = protocol === 'tcps' 
+        ? `tcps://${host}:${port}/${service}`
+        : `${host}:${port}/${service}`;
+      
+      return connectString;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[Oracle] Error parsing tnsnames.ora:', error);
+    return null;
+  }
+}
+
 class OracleConnection {
   private static instance: OracleConnection;
   private pool: oracledb.Pool | null = null;
   private config: OracleConfig;
   private connectionType: OracleConnectionType;
+  private isInitializing: boolean = false;
+  private initPromise: Promise<void> | null = null;
 
-  /**
-   * private 생성자 - 싱글톤 패턴 구현
-   */
   private constructor() {
     const { config, type } = getOracleConfig();
     this.config = config;
     this.connectionType = type;
-    
-    // Oracle 클라이언트 초기화 설정
-    oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT; // 결과를 객체 형태로 반환
-    oracledb.fetchAsString = [oracledb.CLOB]; // CLOB을 문자열로 자동 변환
-    oracledb.autoCommit = false; // 명시적 커밋 사용
-    
-    console.log('[Oracle] Configuration loaded');
+    console.log('[Oracle] Configuration loaded (Thin Mode)');
   }
 
-  /**
-   * OracleConnection 인스턴스 반환
-   * 
-   * @returns OracleConnection 싱글톤 인스턴스
-   */
   public static getInstance(): OracleConnection {
     if (!OracleConnection.instance) {
       OracleConnection.instance = new OracleConnection();
@@ -160,38 +177,70 @@ class OracleConnection {
   }
 
   /**
-   * 연결 풀 초기화
-   * 
-   * 애플리케이션 시작 시 한 번 호출하여 연결 풀을 생성합니다.
-   * 
-   * @throws 연결 실패 시 에러 발생
+   * 연결 풀이 초기화되었는지 확인하고 필요하면 초기화
+   * 모든 쿼리 실행 전에 자동으로 호출됨
    */
-  public async initialize(): Promise<void> {
+  private async ensureInitialized(): Promise<void> {
     if (this.pool) {
-      console.log('[Oracle] Connection pool already initialized');
+      return; // 이미 초기화됨
+    }
+
+    if (this.isInitializing) {
+      // 다른 요청이 초기화 중이면 대기
+      console.log('[Oracle] Waiting for ongoing initialization...');
+      await this.initPromise;
       return;
     }
 
+    // 초기화 시작
+    console.log('[Oracle] Auto-initializing connection pool...');
+    this.isInitializing = true;
+    this.initPromise = this.doInitialize();
+    
+    try {
+      await this.initPromise;
+    } finally {
+      this.isInitializing = false;
+      this.initPromise = null;
+    }
+  }
+
+  /**
+   * 실제 초기화 로직
+   */
+  private async doInitialize(): Promise<void> {
     try {
       console.log('[Oracle] Initializing connection pool...');
       
       let poolConfig: oracledb.PoolAttributes;
 
       if (isWalletConfig(this.config)) {
-        // Wallet 방식
+        const walletLocation = this.config.walletLocation;
+        const cwalletPath = path.join(walletLocation, 'cwallet.sso');
+        const ewalletPath = path.join(walletLocation, 'ewallet.p12');
+        
+        if (!fs.existsSync(cwalletPath) && !fs.existsSync(ewalletPath)) {
+          throw new Error(`Wallet files not found in: ${walletLocation}`);
+        }
+        
+        const connectString = parseTnsnames(walletLocation, this.config.connectionString);
+        
+        if (!connectString) {
+          throw new Error(`Could not parse connection string: ${this.config.connectionString}`);
+        }
+        
         poolConfig = {
           user: this.config.user,
           password: this.config.password,
-          connectionString: this.config.connectionString,
-          walletLocation: this.config.walletLocation,
-          walletPassword: this.config.walletPassword,
+          connectString: connectString,
+          walletLocation: walletLocation,
+          walletPassword: this.config.walletPassword || '',
           poolMin: 2,
           poolMax: 10,
           poolIncrement: 1,
           poolTimeout: 60,
         };
       } else {
-        // 기본 방식
         poolConfig = {
           user: this.config.user,
           password: this.config.password,
@@ -203,27 +252,20 @@ class OracleConnection {
         };
       }
 
-      // 연결 풀 생성
       this.pool = await oracledb.createPool(poolConfig);
 
-      console.log('[Oracle] Connection pool initialized successfully');
-      console.log('[Oracle] Pool size:', {
+      console.log('[Oracle] ✅ Connection pool initialized successfully');
+      console.log('[Oracle] Pool config:', {
         min: this.pool.poolMin,
         max: this.pool.poolMax,
-        increment: this.pool.poolIncrement,
       });
 
       // 연결 테스트
-      await this.testConnection();
+      const testResult = await this.query('SELECT 1 AS num FROM DUAL');
+      console.log('[Oracle] ✅ Connection test passed:', testResult[0]);
     } catch (error) {
-      console.error('[Oracle] Failed to initialize connection pool:', error);
-      if (error instanceof Error) {
-        console.error('[Oracle] Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        });
-      }
+      this.pool = null; // 초기화 실패 시 pool을 null로
+      console.error('[Oracle] ❌ Failed to initialize connection pool:', error);
       throw new Error(
         `Oracle connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -231,61 +273,23 @@ class OracleConnection {
   }
 
   /**
-   * 연결 테스트
-   * 
-   * 간단한 쿼리를 실행하여 데이터베이스 연결을 확인합니다.
-   * 
-   * @throws 연결 테스트 실패 시 에러 발생
+   * 명시적 초기화 (선택사항)
+   * ensureInitialized()가 자동으로 호출하므로 수동 호출 불필요
    */
-  private async testConnection(): Promise<void> {
-    try {
-      const result = await this.query('SELECT 1 FROM DUAL');
-      console.log('[Oracle] Connection test successful:', result);
-    } catch (error) {
-      console.error('[Oracle] Connection test failed:', error);
-      throw error;
-    }
+  public async initialize(): Promise<void> {
+    await this.ensureInitialized();
   }
 
   /**
-   * 쿼리 실행
-   * 
-   * SQL 쿼리를 실행하고 결과를 반환합니다.
-   * 
-   * @param sql - 실행할 SQL 쿼리
-   * @param params - 쿼리 파라미터 (선택사항)
-   * @returns 쿼리 실행 결과 배열
-   * 
-   * @example
-   * ```typescript
-   * // 단순 SELECT
-   * const nodes = await db.query('SELECT * FROM NODES');
-   * 
-   * // 파라미터 사용 (Named 바인딩)
-   * const node = await db.query(
-   *   'SELECT * FROM NODES WHERE ID = :id',
-   *   { id: nodeId }
-   * );
-   * 
-   * // 파라미터 사용 (Positional 바인딩)
-   * const node = await db.query(
-   *   'SELECT * FROM NODES WHERE ID = :1',
-   *   [nodeId]
-   * );
-   * ```
+   * SELECT 쿼리 실행 (자동 초기화)
    */
   public async query<T = any>(sql: string, params?: any[] | Record<string, any>): Promise<T[]> {
-    if (!this.pool) {
-      throw new Error('[Oracle] Connection pool not initialized. Call initialize() first.');
-    }
+    await this.ensureInitialized(); // 자동 초기화
 
     let connection: oracledb.Connection | null = null;
 
     try {
-      // 연결 풀에서 연결 가져오기
-      connection = await this.pool.getConnection();
-
-      // 쿼리 실행
+      connection = await this.pool!.getConnection();
       const result = params
         ? await connection.execute(sql, params, { outFormat: oracledb.OUT_FORMAT_OBJECT })
         : await connection.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
@@ -297,7 +301,6 @@ class OracleConnection {
       console.error('[Oracle] Params:', params);
       throw error;
     } finally {
-      // 연결 반환 (연결 풀로)
       if (connection) {
         try {
           await connection.close();
@@ -309,49 +312,82 @@ class OracleConnection {
   }
 
   /**
-   * 트랜잭션 실행
-   * 
-   * 여러 쿼리를 하나의 트랜잭션으로 실행합니다.
-   * 콜백 함수 내에서 에러가 발생하면 자동으로 롤백됩니다.
-   * 
-   * @param callback - 트랜잭션 내에서 실행할 함수
-   * @returns 콜백 함수의 반환값
-   * 
-   * @example
-   * ```typescript
-   * await db.transaction(async (conn) => {
-   *   await conn.execute('INSERT INTO NODES ...');
-   *   await conn.execute('INSERT INTO NODE_HISTORY ...');
-   *   // 둘 다 성공하면 자동 커밋, 하나라도 실패하면 롤백
-   * });
-   * ```
+   * RETURNING INTO 쿼리 실행 (자동 초기화)
    */
-  public async transaction<T>(callback: (connection: oracledb.Connection) => Promise<T>): Promise<T> {
-    if (!this.pool) {
-      throw new Error('[Oracle] Connection pool not initialized. Call initialize() first.');
-    }
+  public async executeReturning<T = any>(
+    sql: string,
+    params: Record<string, any>,
+    options?: QueryOptions
+  ): Promise<ReturningResult<T>> {
+    await this.ensureInitialized(); // 자동 초기화
 
     let connection: oracledb.Connection | null = null;
 
     try {
-      // 연결 풀에서 연결 가져오기
-      connection = await this.pool.getConnection();
+      connection = await this.pool!.getConnection();
+      
+      const result = await connection.execute(sql, params, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+        autoCommit: options?.autoCommit !== undefined ? options.autoCommit : true,
+        bindDefs: { id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } }
+      });
+
+      const returningResult: ReturningResult<T> = {
+        rowsAffected: result.rowsAffected || 0,
+        outBinds: result.outBinds as Record<string, T[]>,
+      };
+
+      if (returningResult.outBinds && 'id' in returningResult.outBinds) {
+        const ids = returningResult.outBinds.id;
+        if (ids && ids.length === 1) {
+          returningResult.lastInsertId = ids[0] as number;
+        }
+      }
+
+      return returningResult;
+    } catch (error) {
+      console.error('[Oracle] Execute RETURNING failed:', error);
+      console.error('[Oracle] SQL:', sql);
+      throw error;
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+        } catch (closeError) {
+          console.error('[Oracle] Failed to close connection:', closeError);
+        }
+      }
+    }
+  }
+
+  /**
+   * 트랜잭션 실행 (자동 초기화)
+   */
+  public async transaction<T>(
+    callback: (connection: oracledb.Connection) => Promise<T>,
+    options?: TransactionOptions
+  ): Promise<T> {
+    await this.ensureInitialized(); // 자동 초기화
+
+    let connection: oracledb.Connection | null = null;
+
+    try {
+      connection = await this.pool!.getConnection();
       console.log('[Oracle] Transaction started');
 
-      // 콜백 실행
       const result = await callback(connection);
 
-      // 커밋
-      await connection.commit();
-      console.log('[Oracle] Transaction committed');
+      if (options?.autoCommit !== false) {
+        await connection.commit();
+        console.log('[Oracle] Transaction committed');
+      }
 
       return result;
     } catch (error) {
-      // 롤백
       if (connection) {
         try {
           await connection.rollback();
-          console.log('[Oracle] Transaction rolled back');
+          console.log('[Oracle] Transaction rolled back due to error');
         } catch (rollbackError) {
           console.error('[Oracle] Failed to rollback transaction:', rollbackError);
         }
@@ -360,7 +396,6 @@ class OracleConnection {
       console.error('[Oracle] Transaction failed:', error);
       throw error;
     } finally {
-      // 연결 반환
       if (connection) {
         try {
           await connection.close();
@@ -372,14 +407,44 @@ class OracleConnection {
   }
 
   /**
-   * 연결 풀 종료
-   * 
-   * 애플리케이션 종료 시 호출하여 모든 연결을 정리합니다.
+   * DML 실행 (자동 초기화)
    */
+  public async execute(
+    sql: string,
+    params?: any[] | Record<string, any>,
+    autoCommit: boolean = false
+  ): Promise<number> {
+    await this.ensureInitialized(); // 자동 초기화
+
+    let connection: oracledb.Connection | null = null;
+
+    try {
+      connection = await this.pool!.getConnection();
+      const result = params
+        ? await connection.execute(sql, params, { autoCommit })
+        : await connection.execute(sql, [], { autoCommit });
+
+      console.log('[Oracle] Execute successful, rows affected:', result.rowsAffected);
+      return result.rowsAffected || 0;
+    } catch (error) {
+      console.error('[Oracle] Execute failed:', error);
+      console.error('[Oracle] SQL:', sql);
+      throw error;
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+        } catch (closeError) {
+          console.error('[Oracle] Failed to close connection:', closeError);
+        }
+      }
+    }
+  }
+
   public async close(): Promise<void> {
     if (this.pool) {
       try {
-        await this.pool.close(10); // 10초 타임아웃
+        await this.pool.close(10);
         this.pool = null;
         console.log('[Oracle] Connection pool closed');
       } catch (error) {
@@ -389,17 +454,11 @@ class OracleConnection {
     }
   }
 
-  /**
-   * 현재 연결 타입 반환
-   */
   public getConnectionType(): OracleConnectionType {
     return this.connectionType;
   }
 
-  /**
-   * 연결 풀 상태 반환
-   */
-  public getPoolStatus(): oracledb.PoolStatistics | null {
+  public getPoolStatus(): any {
     if (!this.pool) {
       return null;
     }
@@ -407,8 +466,13 @@ class OracleConnection {
   }
 }
 
-// 싱글톤 인스턴스 export
 export const db = OracleConnection.getInstance();
-
-// 타입 export
-export type { OracleWalletConfig, OracleBasicConfig, OracleConfig, OracleConnectionType };
+export type { 
+  OracleWalletConfig, 
+  OracleBasicConfig, 
+  OracleConfig, 
+  OracleConnectionType,
+  ReturningResult,
+  TransactionOptions,
+  QueryOptions
+};

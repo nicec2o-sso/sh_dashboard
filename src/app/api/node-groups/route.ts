@@ -1,79 +1,92 @@
+/**
+ * 노드 그룹 관리 API
+ * 
+ * 경로: /api/node-groups
+ * 
+ * 기능:
+ * - GET: 노드 그룹 목록 조회
+ * - POST: 새 노드 그룹 생성
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { NodeGroupService } from '@/services/nodeGroupService';
-import { CreateNodeGroupDto } from '@/types';
+import { NodeGroupServiceDB } from '@/services/nodeGroupService.database';
 
 /**
- * GET /api/node-groups - 모든 노드 그룹 조회
+ * GET /api/node-groups
+ * 노드 그룹 목록 조회
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const name = searchParams.get('name');
-    const nodeId = searchParams.get('nodeId');
+    const nodeGroups = await NodeGroupServiceDB.getAllNodeGroups();
 
-    let groups = NodeGroupService.getAllNodeGroups();
-
-    // 필터링
-    if (name) {
-      groups = NodeGroupService.searchNodeGroupsByName(name);
-    }
-    if (nodeId) {
-      groups = NodeGroupService.getGroupsByNodeId(parseInt(nodeId));
-    }
+    console.log('[NodeGroup Route] Node groups retrieved:', nodeGroups.length);
 
     return NextResponse.json({
       success: true,
-      data: groups,
+      data: nodeGroups,
     });
   } catch (error) {
+    console.error('[NodeGroup Route] Error fetching node groups:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 그룹 조회 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to fetch node groups',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * POST /api/node-groups - 노드 그룹 생성
+ * POST /api/node-groups
+ * 새 노드 그룹 생성
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateNodeGroupDto = await request.json();
-    console.log('Received body for creating node group:', body);
+    const body = await request.json();
+    console.log('[NodeGroup Route] Creating node group:', body);
 
-    // 유효성 검증
-    if (!body.name || !body.description) {
+    // 서비스 호출로 노드 그룹 생성
+    try {
+      const newNodeGroup = await NodeGroupServiceDB.createNodeGroup({
+        nodeGroupName: body.nodeGroupName,
+        nodeGroupDesc: body.nodeGroupDesc,
+        nodeIds: body.nodeIds,
+      });
+
       return NextResponse.json(
-        { success: false, error: '필수 필드가 누락되었습니다' },
-        { status: 400 }
+        {
+          success: true,
+          data: newNodeGroup,
+          message: 'Node group created successfully',
+        },
+        { status: 201 }
       );
+    } catch (serviceError) {
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('already exists')) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: serviceError.message,
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-    if (!body.nodeIds || body.nodeIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: '최소 1개의 노드를 선택해야 합니다' },
-        { status: 400 }
-      );
-    }
-
-  
-    const newGroup = NodeGroupService.createNodeGroup(body);
-    console.log('Created new node group:', newGroup);
-
-    if (!newGroup) {
-      return NextResponse.json(
-        { success: false, error: '존재하지 않는 노드 ID가 포함되어 있습니다' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: newGroup,
-    }, { status: 201 });
   } catch (error) {
+    console.error('[NodeGroup Route] Error creating node group:', error);
+    
     return NextResponse.json(
-      { success: false, error: '노드 그룹 생성 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to create node group',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

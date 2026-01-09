@@ -1,74 +1,100 @@
+/**
+ * API 관리 API
+ * 
+ * 경로: /api/apis
+ * 
+ * 기능:
+ * - GET: API 목록 조회 (태그 포함)
+ * - POST: 새 API 생성 (태그 지원)
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { ApiService } from '@/services/apiService';
-import { CreateApiDto } from '@/types';
+import { ApiServiceDB } from '@/services/apiService.database';
 
 /**
- * GET /api/apis - 모든 API 조회
+ * GET /api/apis
+ * API 목록 조회 (태그 포함)
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const method = searchParams.get('method') as 'GET' | 'POST' | 'PUT' | 'DELETE' | null;
-    
-    let apis = ApiService.getAllApis();
+    const method = searchParams.get('method');
 
-    if (method) {
-      apis = ApiService.getApisByMethod(method);
-    }
-    
+    const apis = await ApiServiceDB.getAllApis(method || undefined);
+
+    console.log('[API Route] APIs retrieved:', apis.length);
+
     return NextResponse.json({
       success: true,
       data: apis,
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: 'API 조회 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'API 목록 조회 중 오류가 발생했습니다',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 /**
- * POST /api/apis - API 생성
+ * POST /api/apis
+ * 새 API 생성 (태그 지원)
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateApiDto = await request.json();
+    const body = await request.json();
 
-    // 유효성 검증
-    if (!body.name || !body.uri || !body.method) {
+    // 서비스 호출로 API 생성
+    try {
+      const newApi = await ApiServiceDB.createApi({
+        apiName: body.apiName,
+        uri: body.uri,
+        method: body.method,
+        tags: body.tags,
+        parameters: body.parameters,
+      });
+
       return NextResponse.json(
-        { success: false, error: '필수 필드가 누락되었습니다' },
-        { status: 400 }
+        {
+          success: true,
+          data: newApi,
+          message: 'API created successfully',
+        },
+        { status: 201 }
       );
+    } catch (serviceError) {
+      // 비즈니스 로직 에러 처리
+      if (serviceError instanceof Error) {
+        if (serviceError.message.includes('not found')) {
+          return NextResponse.json(
+            { success: false, message: 'API를 찾을 수 없거나 대상이 유효하지 않습니다' },
+            { status: 404 }
+          );
+        } else if (serviceError.message.includes('already exists')) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: serviceError.message,
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw serviceError;
     }
-
-
-
-    // URI 형식 검증
-    if (!body.uri.startsWith('/')) {
-      return NextResponse.json(
-        { success: false, error: 'URI는 /로 시작해야 합니다' },
-        { status: 400 }
-      );
-    }
-
-    const newApi = ApiService.createApi(body);
-
-    if (!newApi) {
-      return NextResponse.json(
-        { success: false, error: '대상 노드 또는 그룹을 찾을 수 없습니다' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: newApi,
-    }, { status: 201 });
   } catch (error) {
+    console.error('[API Route] Error creating API:', error);
+    
     return NextResponse.json(
-      { success: false, error: 'API 생성 중 오류가 발생했습니다' },
+      { 
+        success: false, 
+        error: 'Failed to create API',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

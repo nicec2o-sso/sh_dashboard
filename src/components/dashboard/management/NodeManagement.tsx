@@ -7,21 +7,20 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Loader2, RefreshCw, Edit } from 'lucide-react';
 import { Node } from '@/types';
+import { validateNodeData } from '@/lib/clientValidation';
 
 export function NodeManagement() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newNode, setNewNode] = useState({ name: '', host: '', port: '', description: '' });
+  const [newNode, setNewNode] = useState({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
   const [healthChecking, setHealthChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // 수정 중인 노드 ID
   const [editingNodeId, setEditingNodeId] = useState<number | null>(null);
 
-  // 데이터 fetch 함수
   const fetchData = useCallback(async () => {
     setError(null);
     try {
@@ -39,7 +38,6 @@ export function NodeManagement() {
     }
   }, []);
 
-  // 초기 데이터 로드
   useEffect(() => {
     async function initialLoad() {
       setIsLoading(true);
@@ -49,11 +47,10 @@ export function NodeManagement() {
     initialLoad();
   }, [fetchData]);
 
-  // 10초마다 자동 갱신
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000); // 10초
+    }, 10000);
 
     return () => clearInterval(intervalId);
   }, [fetchData]);
@@ -66,14 +63,6 @@ export function NodeManagement() {
 
     setHealthChecking(true);
     try {
-      // 실제 헬스 체크 API 호출 (구현 필요)
-      // const response = await fetch(`/api/nodes/health-check`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ host: newNode.host, port: parseInt(newNode.port) })
-      // });
-      
-      // 임시로 1초 대기
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('헬스 체크 성공! 노드가 정상적으로 응답합니다.');
     } catch (e) {
@@ -83,38 +72,47 @@ export function NodeManagement() {
     }
   };
 
-  // 수정 버튼 클릭 핸들러
   const handleEditClick = (node: Node) => {
-    setEditingNodeId(node.id);
+    setEditingNodeId(node.nodeId);
     setNewNode({
-      name: node.name,
+      nodeName: node.nodeName,
       host: node.host,
       port: node.port.toString(),
-      description: node.description || '',
+      nodeDesc: node.nodeDesc || '',
+      tags: typeof node.tags === 'string' ? node.tags : '',
     });
     setShowAddForm(true);
   };
 
-  // 취소 핸들러
   const handleCancel = () => {
-    setNewNode({ name: '', host: '', port: '', description: '' });
+    setNewNode({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
     setEditingNodeId(null);
     setShowAddForm(false);
   };
 
   const addNode = async () => {
-    if (!newNode.name || !newNode.host || !newNode.port) {
-      alert('이름, 호스트, 포트는 필수 입력 항목입니다.');
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateNodeData({
+      nodeName: newNode.nodeName,
+      host: newNode.host,
+      port: newNode.port,
+      nodeDesc: newNode.nodeDesc,
+      tags: newNode.tags
+    });
+
+    if (validationError) {
+      alert(validationError);
       return;
     }
 
     setIsCreating(true);
     try {
       const nodeToCreate = {
-        name: newNode.name,
+        nodeName: newNode.nodeName,
         host: newNode.host,
         port: parseInt(newNode.port),
-        description: newNode.description || undefined,
+        nodeDesc: newNode.nodeDesc || undefined,
+        tags: newNode.tags || undefined,
       };
 
       const response = await fetch('/api/nodes', {
@@ -125,16 +123,14 @@ export function NodeManagement() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `노드 생성 실패: ${response.status}`);
+        throw new Error(errorData.error || errorData.message || `노드 생성 실패: ${response.status}`);
       }
 
-      const createdNode = await response.json();
-      
-      // 생성 성공 후 서버에서 최신 데이터 다시 가져오기
       await fetchData();
       
-      setNewNode({ name: '', host: '', port: '', description: '' });
+      setNewNode({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
       setShowAddForm(false);
+      alert('노드가 성공적으로 등록되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : '노드 등록에 실패했습니다.';
       console.error("노드 생성 실패:", message);
@@ -144,20 +140,34 @@ export function NodeManagement() {
     }
   };
 
-  // 노드 수정 핸들러
   const updateNode = async () => {
-    if (!editingNodeId || !newNode.name || !newNode.host || !newNode.port) {
-      alert('이름, 호스트, 포트는 필수 입력 항목입니다.');
+    // ✅ 클라이언트 Validation 추가
+    const validationError = validateNodeData({
+      nodeName: newNode.nodeName,
+      host: newNode.host,
+      port: newNode.port,
+      nodeDesc: newNode.nodeDesc,
+      tags: newNode.tags
+    });
+
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    if (!editingNodeId) {
+      alert('수정할 노드가 선택되지 않았습니다.');
       return;
     }
 
     setIsUpdating(true);
     try {
       const nodeToUpdate = {
-        name: newNode.name,
+        nodeName: newNode.nodeName,
         host: newNode.host,
         port: parseInt(newNode.port),
-        description: newNode.description || undefined,
+        nodeDesc: newNode.nodeDesc || undefined,
+        tags: newNode.tags || undefined,
       };
 
       const response = await fetch(`/api/nodes/${editingNodeId}`, {
@@ -168,17 +178,15 @@ export function NodeManagement() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `노드 수정 실패: ${response.status}`);
+        throw new Error(errorData.error || errorData.message || `노드 수정 실패: ${response.status}`);
       }
 
-      const responseData = await response.json();
-      
-      // 수정 성공 후 서버에서 최신 데이터 다시 가져오기
       await fetchData();
       
-      setNewNode({ name: '', host: '', port: '', description: '' });
+      setNewNode({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
       setEditingNodeId(null);
       setShowAddForm(false);
+      alert('노드가 성공적으로 수정되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : '노드 수정에 실패했습니다.';
       console.error("노드 수정 실패:", message);
@@ -188,22 +196,21 @@ export function NodeManagement() {
     }
   };
 
-  const deleteNode = async (id: number) => {
+  const deleteNode = async (nodeId: number) => {
     if (!confirm('정말 이 노드를 삭제하시겠습니까?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/nodes/${id}`, {
+      const response = await fetch(`/api/nodes/${nodeId}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `노드 삭제 실패: ${response.status}`);
+        throw new Error(errorData.error || errorData.message || `노드 삭제 실패: ${response.status}`);
       }
 
-      // 삭제 성공 후 서버에서 최신 데이터 다시 가져오기
       await fetchData();
       alert('노드가 성공적으로 삭제되었습니다.');
     } catch (e) {
@@ -275,8 +282,8 @@ export function NodeManagement() {
             <div>
               <Label>노드 이름 *</Label>
               <Input
-                value={newNode.name}
-                onChange={(e) => setNewNode({ ...newNode, name: e.target.value })}
+                value={newNode.nodeName}
+                onChange={(e) => setNewNode({ ...newNode, nodeName: e.target.value })}
                 placeholder="예: Web Server 1"
               />
             </div>
@@ -302,10 +309,22 @@ export function NodeManagement() {
             </div>
 
             <div>
+              <Label>태그</Label>
+              <Input
+                value={newNode.tags}
+                onChange={(e) => setNewNode({ ...newNode, tags: e.target.value })}
+                placeholder="태그를 콤마로 구분하여 입력 (예: production,web,critical)"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                콤마(,)로 구분하여 여러 태그를 입력할 수 있습니다.
+              </p>
+            </div>
+
+            <div>
               <Label>설명</Label>
               <Input
-                value={newNode.description}
-                onChange={(e) => setNewNode({ ...newNode, description: e.target.value })}
+                value={newNode.nodeDesc}
+                onChange={(e) => setNewNode({ ...newNode, nodeDesc: e.target.value })}
                 placeholder="노드에 대한 설명 (선택사항)"
               />
             </div>
@@ -362,28 +381,37 @@ export function NodeManagement() {
           </Card>
         ) : (
           nodes.map((node) => (
-            <Card key={node.id}>
+            <Card key={node.nodeId}>
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="secondary" className="text-xs font-mono">
-                        ID: {node.id}
+                        ID: {node.nodeId}
                       </Badge>
-                      <CardTitle className="text-lg">{node.name}</CardTitle>
-                      {node.status && (
-                        <Badge variant={node.status === 'healthy' ? 'default' : 'destructive'}>
-                          {node.status}
+                      <CardTitle className="text-lg">{node.nodeName}</CardTitle>
+                      {node.nodeStatus && (
+                        <Badge variant={node.nodeStatus === 'active' ? 'default' : 'destructive'}>
+                          {node.nodeStatus}
                         </Badge>
                       )}
                     </div>
                     <CardDescription className="mt-1">
                       {node.host}:{node.port}
                     </CardDescription>
-                    {node.description && (
+                    {node.nodeDesc && (
                       <CardDescription className="mt-1 text-gray-600">
-                        {node.description}
+                        {node.nodeDesc}
                       </CardDescription>
+                    )}
+                    {node.tags && node.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {(typeof node.tags === 'string' ? node.tags.split(',').filter(t => t.trim()) : []).map((tag, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {tag.trim()}
+                          </Badge>
+                        ))}
+                      </div>
                     )}
                   </div>
                   
@@ -399,7 +427,7 @@ export function NodeManagement() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => deleteNode(node.id)}
+                      onClick={() => deleteNode(node.nodeId)}
                       title="노드 삭제"
                     >
                       <Trash2 className="w-4 h-4 text-red-600" />
