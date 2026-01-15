@@ -121,11 +121,11 @@ export function SyntheticTestResults({
     initialLoad();
   }, [fetchData]);
 
-  // 10초마다 자동 갱신 (백그라운드)
+  // 5분마다 자동 갱신 (백그라운드)
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000); // 10초
+    }, 300000); // 5분
 
     return () => clearInterval(intervalId);
   }, [fetchData]);
@@ -174,7 +174,7 @@ export function SyntheticTestResults({
       .slice(0, 50) 
       .reverse() 
       .map((item) => {
-        if (item.success) {
+        if (item.success === true) {
           successCount++;
         }
         totalResponseTime += item.responseTimeMs;

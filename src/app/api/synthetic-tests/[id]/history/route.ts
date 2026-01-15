@@ -8,7 +8,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SyntheticTestServiceDB } from '@/services/syntheticTestService.database';
+import { 
+  SyntheticTestServiceDB,
+  convertTestHistoryToResponse 
+} from '@/services/syntheticTestService.database';
 
 /**
  * GET /api/synthetic-tests/[id]/history
@@ -40,12 +43,15 @@ export async function GET(
 
     const history = await SyntheticTestServiceDB.getTestHistory(syntheticTestId, limit);
 
-    console.log('[SyntheticTest Route] Test history retrieved:', syntheticTestId, history.length);
+    // DB 결과를 클라이언트용 형식으로 변환 (success: 'Y'/'N' -> boolean)
+    const responseData = history.map(convertTestHistoryToResponse);
+
+    console.log('[SyntheticTest Route] Test history retrieved:', syntheticTestId, responseData.length);
 
     return NextResponse.json({
       success: true,
-      data: history,
-      count: history.length,
+      data: responseData,
+      count: responseData.length,
     });
   } catch (error) {
     console.error('[SyntheticTest Route] Error fetching test history:', error);

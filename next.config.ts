@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactCompiler: true,
   
+  // 개발 모드에서 source map 비활성화 (무한 루프 방지)
+  productionBrowserSourceMaps: false,
+  
   // 네이티브 모듈을 서버 전용 패키지로 설정 (Altibase 전용)
   serverExternalPackages: [
     'odbc',
@@ -14,7 +17,12 @@ const nextConfig: NextConfig = {
   turbopack: {},
   
   // Webpack 설정 (필요시 --webpack 플래그로 사용)
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // 개발 모드에서 source map 비활성화
+    if (dev) {
+      config.devtool = false;
+    }
+
     // 서버 사이드에서만 네이티브 모듈 처리
     if (isServer) {
       config.externals = config.externals || [];
@@ -47,6 +55,19 @@ const nextConfig: NextConfig = {
       test: /\.(md|txt)$/,
       loader: 'ignore-loader',
     });
+
+    // axios 소스맵 문제 해결
+    config.module.rules.push({
+      test: /node_modules\/axios/,
+      use: ['source-map-loader'],
+      enforce: 'pre',
+    });
+
+    // 소스맵 경고 무시
+    config.ignoreWarnings = [
+      /Failed to parse source map/,
+      /sourceMapURL could not be parsed/,
+    ];
 
     return config;
   },

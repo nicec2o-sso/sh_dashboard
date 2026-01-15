@@ -65,7 +65,7 @@ export function NodeGroupManagement() {
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000);
+    }, 300000);
 
     return () => clearInterval(intervalId);
   }, [fetchData]);

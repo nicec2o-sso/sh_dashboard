@@ -16,7 +16,7 @@ export function NodeMonitoringTab() {
         <TabsTrigger value="execute">API 실행</TabsTrigger>
         <TabsTrigger value="synthetic">Synthetic Tests</TabsTrigger>
         <TabsTrigger value="alerts">알럿 모니터링</TabsTrigger>
-        <TabsTrigger value="tags">태그</TabsTrigger>
+        <TabsTrigger value="tags">태그 사용현황</TabsTrigger>
       </TabsList>
 
       <TabsContent value="execute" className="mt-4">

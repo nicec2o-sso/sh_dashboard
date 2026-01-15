@@ -46,8 +46,14 @@ export type {
 export type {
   SyntheticTest,
   SyntheticTestHistory,
+  SyntheticTestHistoryRow,
+  CreateSyntheticTestHistory,
   CreateSyntheticTestDto,
   UpdateSyntheticTestDto
+} from './synthetic-test.types';
+
+export {
+  convertSyntheticTestHistoryRow
 } from './synthetic-test.types';
 
 // Node 도메인 타입

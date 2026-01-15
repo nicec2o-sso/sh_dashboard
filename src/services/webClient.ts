@@ -58,7 +58,23 @@ webClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // 2. 수정된 config를 반환
+    // 2. URL 정규화 (WHATWG URL API 사용)
+    // axios가 내부적으로 url.parse()를 사용하는 것을 방지하기 위해
+    // URL을 명시적으로 처리
+    if (config.url && config.baseURL) {
+      try {
+        // baseURL과 url을 결합하여 완전한 URL 생성
+        const fullUrl = new URL(config.url, config.baseURL);
+        // 완전한 URL로 설정하고 baseURL은 비움
+        config.url = fullUrl.toString();
+        config.baseURL = undefined;
+      } catch (error) {
+        // URL 파싱 실패 시 원본 URL 유지
+        console.warn('URL parsing failed, using original URL:', error);
+      }
+    }
+    
+    // 3. 수정된 config를 반환
     return config; 
   },
   (error) => {
@@ -94,39 +110,70 @@ export const setBaseUrl = (newBaseUrl: string): void => {
  * 범용적인 API 호출을 위한 래퍼 객체입니다.
  * T: 응답 데이터 타입
  * B: 요청 바디 데이터 타입 (POST/PUT/PATCH에서 사용)
+ * 
+ * 모든 URL은 WHATWG URL API를 사용하여 처리됩니다.
  */
 export const WebClient = {
   
   // GET 요청
   get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
-    const response = await webClient.get<T>(url, config);
+    // URL 정규화 (WHATWG URL API)
+    const normalizedUrl = normalizeUrl(url, API_BASE_URL);
+    const response = await webClient.get<T>(normalizedUrl, { ...config, baseURL: undefined });
     return response.data;
   },
   
   // POST 요청
   post: async <T, B = any>(url: string, data?: B, config?: AxiosRequestConfig): Promise<T> => {
-    const response = await webClient.post<T>(url, data, config);
+    console.log('POST111111111111111:', url, data, config);
+    const normalizedUrl = normalizeUrl(url, API_BASE_URL);
+    const response = await webClient.post<T>(normalizedUrl, data, { ...config, baseURL: undefined });
+    console.log('POST2222222222222222:', response.data);
     return response.data;
   },
 
   // PUT 요청
   put: async <T, B = any>(url: string, data?: B, config?: AxiosRequestConfig): Promise<T> => {
-    const response = await webClient.put<T>(url, data, config);
+    const normalizedUrl = normalizeUrl(url, API_BASE_URL);
+    const response = await webClient.put<T>(normalizedUrl, data, { ...config, baseURL: undefined });
     return response.data;
   },
 
   // PATCH 요청 (부분 업데이트)
   patch: async <T, B = any>(url: string, data?: B, config?: AxiosRequestConfig): Promise<T> => {
-    const response = await webClient.patch<T>(url, data, config);
+    const normalizedUrl = normalizeUrl(url, API_BASE_URL);
+    const response = await webClient.patch<T>(normalizedUrl, data, { ...config, baseURL: undefined });
     return response.data;
   },
 
   // DELETE 요청
   delete: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
-    const response = await webClient.delete<T>(url, config);
+    const normalizedUrl = normalizeUrl(url, API_BASE_URL);
+    const response = await webClient.delete<T>(normalizedUrl, { ...config, baseURL: undefined });
     return response.data;
   },
 };
+
+/**
+ * URL을 정규화하는 헬퍼 함수 (WHATWG URL API 사용)
+ * @param url 대상 URL
+ * @param baseUrl 기본 URL
+ * @returns 정규화된 완전한 URL 문자열
+ */
+function normalizeUrl(url: string, baseUrl: string): string {
+  try {
+    // 절대 URL인 경우 그대로 반환
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    // 상대 URL인 경우 baseUrl과 결합
+    const fullUrl = new URL(url, baseUrl);
+    return fullUrl.toString();
+  } catch (error) {
+    console.warn('URL normalization failed, using original URL:', error);
+    return url;
+  }
+}
 
 export interface WebClientResponse {
     /**

@@ -197,14 +197,13 @@ export const UPDATE_SYNTHETIC_TEST_ENABLED = `
  * 테스트 실행 결과를 저장하고 생성된 이력 ID를 반환합니다.
  * 
  * 파라미터:
- * - :syntheticTestId (NUMBER): 테스트 ID
+ * - :syntheticTestId (NUMBER): 테스트 ID (수동 테스트는 NULL)
  * - :nodeId (NUMBER): 실행된 노드 ID
  * - :statusCode (NUMBER): HTTP 응답 상태 코드
  * - :success (CHAR): 성공 여부 (Y, N)
  * - :responseTimeMs (NUMBER): 응답 시간 (밀리초)
  * - :input (VARCHAR2): 입력 데이터 (JSON)
  * - :output (VARCHAR2): 출력 데이터 (JSON)
- * - :errorMessage (VARCHAR2): 에러 메시지 (선택)
  * 
  * 반환값:
  * - :id (NUMBER): 생성된 이력 ID
@@ -287,7 +286,7 @@ export const SELECT_NODE_TEST_HISTORY = `
     h.RESPONSE_TIME_MS AS "responseTimeMs",
     h.EXECUTED_AT AS "executedAt",
     h.INPUT AS "input",
-    h.OUTPUT AS "output",
+    h.OUTPUT AS "output"
     st.SYNTHETIC_TEST_NAME AS "syntheticTestName",
     a.API_NAME AS "apiName",
     a.URI AS "uri"
@@ -297,6 +296,76 @@ export const SELECT_NODE_TEST_HISTORY = `
   WHERE h.NODE_ID = :nodeId
   ORDER BY h.EXECUTED_AT DESC
   FETCH FIRST :limit ROWS ONLY
+`;
+
+/**
+ * 모든 테스트 이력 조회
+ */
+export const SELECT_ALL_TEST_HISTORY = `
+  SELECT 
+    h.SYNTHETIC_TEST_HISTORY_ID AS "syntheticTestHistoryId",
+    h.SYNTHETIC_TEST_ID AS "syntheticTestId",
+    h.NODE_ID AS "nodeId",
+    h.STATUS_CODE AS "statusCode",
+    h.SUCCESS AS "success",
+    h.RESPONSE_TIME_MS AS "responseTimeMs",
+    h.EXECUTED_AT AS "executedAt",
+    h.INPUT AS "input",
+    h.OUTPUT AS "output"
+  FROM MT_SYNTHETIC_TEST_HISTORY h
+  ORDER BY h.EXECUTED_AT DESC
+`;
+
+/**
+ * 특정 테스트의 이력 조회 (필터 옵션 포함)
+ * 
+ * 파라미터:
+ * - :syntheticTestId (NUMBER): 테스트 ID
+ * - :nodeId (NUMBER, 선택): 노드 ID
+ * - :startDate (TIMESTAMP, 선택): 시작 일시
+ * - :endDate (TIMESTAMP, 선택): 종료 일시
+ * - :limit (NUMBER, 선택): 조회할 최대 개수
+ */
+export const SELECT_TEST_HISTORY_WITH_FILTERS = `
+  SELECT 
+    h.SYNTHETIC_TEST_HISTORY_ID AS "syntheticTestHistoryId",
+    h.SYNTHETIC_TEST_ID AS "syntheticTestId",
+    h.NODE_ID AS "nodeId",
+    h.STATUS_CODE AS "statusCode",
+    h.SUCCESS AS "success",
+    h.RESPONSE_TIME_MS AS "responseTimeMs",
+    h.EXECUTED_AT AS "executedAt",
+    h.INPUT AS "input",
+    h.OUTPUT AS "output"
+  FROM MT_SYNTHETIC_TEST_HISTORY h
+  WHERE h.SYNTHETIC_TEST_ID = :syntheticTestId
+    AND (:nodeId IS NULL OR h.NODE_ID = :nodeId)
+    AND (:startDate IS NULL OR h.EXECUTED_AT >= :startDate)
+    AND (:endDate IS NULL OR h.EXECUTED_AT <= :endDate)
+  ORDER BY h.EXECUTED_AT DESC
+  FETCH FIRST :limit ROWS ONLY
+`;
+
+/**
+ * 특정 이력 삭제
+ * 
+ * 파라미터:
+ * - :syntheticTestHistoryId (NUMBER): 삭제할 이력 ID
+ */
+export const DELETE_TEST_HISTORY = `
+  DELETE FROM MT_SYNTHETIC_TEST_HISTORY
+  WHERE SYNTHETIC_TEST_HISTORY_ID = :syntheticTestHistoryId
+`;
+
+/**
+ * 특정 테스트의 모든 이력 삭제
+ * 
+ * 파라미터:
+ * - :syntheticTestId (NUMBER): 테스트 ID
+ */
+export const DELETE_TEST_HISTORIES_BY_TEST_ID = `
+  DELETE FROM MT_SYNTHETIC_TEST_HISTORY
+  WHERE SYNTHETIC_TEST_ID = :syntheticTestId
 `;
 
 /**
@@ -344,4 +413,38 @@ export const CHECK_SYNTHETIC_TEST_NAME_EXISTS = `
 export const DELETE_OLD_TEST_HISTORY = `
   DELETE FROM MT_SYNTHETIC_TEST_HISTORY
   WHERE EXECUTED_AT < SYSTIMESTAMP - :retentionDays
+`;
+
+/**
+ * 알럿 목록 조회 (임계값 초과 테스트만)
+ * 시간 범위 내에 실행된 히스토리 중 responseTimeMs가 alertThresholdMs를 초과한 건들만 조회
+ * 
+ * 파라미터:
+ * - :startDate (TIMESTAMP): 시작 일시
+ * - :limit (NUMBER, 선택): 조회할 최대 개수 (기본값: 100)
+ */
+export const SELECT_ALERTS = `
+  SELECT 
+    st.SYNTHETIC_TEST_ID AS "testId",
+    st.SYNTHETIC_TEST_NAME AS "testName",
+    h.NODE_ID AS "nodeId",
+    n.NODE_NAME AS "nodeName",
+    st.API_ID AS "apiId",
+    a.API_NAME AS "apiName",
+    a.URI AS "apiUri",
+    a.METHOD AS "apiMethod",
+    h.RESPONSE_TIME_MS AS "responseTime",
+    st.ALERT_THRESHOLD_MS AS "threshold",
+    h.EXECUTED_AT AS "timestamp",
+    h.STATUS_CODE AS "statusCode",
+    h.INPUT AS "input"
+  FROM MT_SYNTHETIC_TEST_HISTORY h
+  INNER JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
+  INNER JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
+  INNER JOIN MT_APIS a ON st.API_ID = a.API_ID
+  WHERE h.EXECUTED_AT >= :startDate
+    AND h.RESPONSE_TIME_MS > st.ALERT_THRESHOLD_MS
+    AND h.STATUS_CODE != '200'
+  ORDER BY h.EXECUTED_AT DESC
+  FETCH FIRST :limit ROWS ONLY
 `;

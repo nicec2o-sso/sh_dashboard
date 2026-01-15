@@ -9,13 +9,16 @@ export async function POST(
  request: NextRequest, 
   context: { params: Promise<{ id: string }> }
 ) {
+    console.log(`111111111111111111111h body:`);
   try {
+    console.log(`1111111111111111111111D: ${id} with body:`, body);
     const id = parseInt((await context.params).id, 10);
+    console.log(`1111111111111111111111D: ${id} with body:`);
     let body = await request.json();
     if(!body) {
       body = {};
     }
-    
+    console.log(`1111111111111111111111D: ${id} with body:`, body);
     const test = await SyntheticTestServiceDB.getSyntheticTestById(id);
     if (!test) {
       return NextResponse.json(

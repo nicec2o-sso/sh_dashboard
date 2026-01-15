@@ -69,11 +69,11 @@ export function ApiManagement() {
     initialLoad();
   }, [fetchData]);
 
-  // 10초마다 자동 갱신
+  // 5분마다 자동 갱신
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000);
+    }, 300000);
 
     return () => clearInterval(intervalId);
   }, [fetchData]);

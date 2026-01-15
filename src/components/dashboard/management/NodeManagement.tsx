@@ -5,15 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Loader2, RefreshCw, Edit } from 'lucide-react';
+import { Plus, Trash2, Loader2, RefreshCw, Edit, CheckCircle, XCircle } from 'lucide-react';
 import { Node } from '@/types';
 import { validateNodeData } from '@/lib/clientValidation';
+import { checkHostHealth } from '@/lib/healthCheck';
 
 export function NodeManagement() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newNode, setNewNode] = useState({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
   const [healthChecking, setHealthChecking] = useState(false);
+  const [healthCheckResult, setHealthCheckResult] = useState<{
+    success: boolean;
+    message: string;
+    responseTimeMs?: number;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -50,7 +56,7 @@ export function NodeManagement() {
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000);
+    }, 300000);
 
     return () => clearInterval(intervalId);
   }, [fetchData]);
@@ -61,12 +67,38 @@ export function NodeManagement() {
       return;
     }
 
+    const portNumber = parseInt(newNode.port);
+    if (isNaN(portNumber) || portNumber < 1 || portNumber > 65535) {
+      alert('올바른 포트 번호를 입력해주세요. (1-65535)');
+      return;
+    }
+
     setHealthChecking(true);
+    setHealthCheckResult(null);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('헬스 체크 성공! 노드가 정상적으로 응답합니다.');
+      console.log(`헬스 체크 시작: ${newNode.host}:${newNode.port}`);
+      const result = await checkHostHealth(newNode.host, portNumber);
+      
+      if (result.success) {
+        setHealthCheckResult({
+          success: true,
+          message: `헬스 체크 성공! 응답시간: ${result.responseTimeMs}ms)`,
+          responseTimeMs: result.responseTimeMs,
+        });
+      } else {
+        setHealthCheckResult({
+          success: false,
+          message: `헬스 체크 실패: ${result.errorMessage || '연결 실패'}`,
+          responseTimeMs: result.responseTimeMs,
+        });
+      }
     } catch (e) {
-      alert('헬스 체크 실패: 노드에 연결할 수 없습니다.');
+      console.error('헬스 체크 오류:', e);
+      setHealthCheckResult({
+        success: false,
+        message: `헬스 체크 중 오류 발생: ${e instanceof Error ? e.message : '알 수 없는 오류'}`,
+      });
     } finally {
       setHealthChecking(false);
     }
@@ -82,12 +114,14 @@ export function NodeManagement() {
       tags: typeof node.tags === 'string' ? node.tags : '',
     });
     setShowAddForm(true);
+    setHealthCheckResult(null);
   };
 
   const handleCancel = () => {
     setNewNode({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
     setEditingNodeId(null);
     setShowAddForm(false);
+    setHealthCheckResult(null);
   };
 
   const addNode = async () => {
@@ -130,6 +164,7 @@ export function NodeManagement() {
       
       setNewNode({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
       setShowAddForm(false);
+      setHealthCheckResult(null);
       alert('노드가 성공적으로 등록되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : '노드 등록에 실패했습니다.';
@@ -186,6 +221,7 @@ export function NodeManagement() {
       setNewNode({ nodeName: '', host: '', port: '', nodeDesc: '', tags: '' });
       setEditingNodeId(null);
       setShowAddForm(false);
+      setHealthCheckResult(null);
       alert('노드가 성공적으로 수정되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : '노드 수정에 실패했습니다.';
@@ -293,7 +329,10 @@ export function NodeManagement() {
                 <Label>호스트 *</Label>
                 <Input
                   value={newNode.host}
-                  onChange={(e) => setNewNode({ ...newNode, host: e.target.value })}
+                  onChange={(e) => {
+                    setNewNode({ ...newNode, host: e.target.value });
+                    setHealthCheckResult(null); // 입력 변경 시 헬스 체크 결과 초기화
+                  }}
                   placeholder="192.168.1.10 또는 example.com"
                 />
               </div>
@@ -302,11 +341,36 @@ export function NodeManagement() {
                 <Input
                   type="number"
                   value={newNode.port}
-                  onChange={(e) => setNewNode({ ...newNode, port: e.target.value })}
+                  onChange={(e) => {
+                    setNewNode({ ...newNode, port: e.target.value });
+                    setHealthCheckResult(null); // 입력 변경 시 헬스 체크 결과 초기화
+                  }}
                   placeholder="8080"
                 />
               </div>
             </div>
+
+            {/* 헬스 체크 결과 표시 */}
+            {healthCheckResult && (
+              <div className={`p-3 rounded-md flex items-start gap-2 ${
+                healthCheckResult.success 
+                  ? 'bg-green-50 border border-green-200' 
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                {healthCheckResult.success ? (
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${
+                    healthCheckResult.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {healthCheckResult.message}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label>태그</Label>

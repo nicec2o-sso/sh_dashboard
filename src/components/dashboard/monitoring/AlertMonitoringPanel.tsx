@@ -34,7 +34,7 @@ export function AlertMonitoringPanel() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [nodeGroups, setNodeGroups] = useState<NodeGroup[]>([]);
   const [tests, setTests] = useState<SyntheticTest[]>([]);
-  const [testResults, setTestResults] = useState<SyntheticTestHistory[]>([]);
+  const [alertData, setAlertData] = useState<Alert[]>([]); // useMemo에서 state로 변경
   const [apis, setApis] = useState<Api[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [apiParameters, setApiParameters] = useState<Record<number, ApiParameter[]>>({});
@@ -85,22 +85,6 @@ export function AlertMonitoringPanel() {
         parametersMap[apiId] = parameters;
       });
       setApiParameters(parametersMap);
-
-      // 각 테스트의 히스토리를 병렬로 조회
-      if (fetchedTests.length > 0) {
-        const historyPromises = fetchedTests.map((test: SyntheticTest) =>
-          fetch(`/api/synthetic-tests/${test.syntheticTestId}/history`).then(res => res.json())
-        );
-
-        const historyResults = await Promise.all(historyPromises);
-        
-        // 모든 히스토리를 하나의 배열로 합침
-        const allHistories: SyntheticTestHistory[] = historyResults.flatMap(
-          result => Array.isArray(result) ? result : []
-        );
-        
-        setTestResults(allHistories);
-      }
       
       setError(null);
     } catch (e) {
@@ -109,7 +93,85 @@ export function AlertMonitoringPanel() {
     }
   }, []);
 
-  // 초기 데이터 로드
+  // 알럿 데이터 조회 함수 - 의존성 배열에 tests를 제거하고 useRef로 참조
+  const testsRef = React.useRef<SyntheticTest[]>([]);
+  
+  // tests가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    testsRef.current = tests;
+  }, [tests]);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      // 시간 범위 파라미터로 전달
+      const params = new URLSearchParams();
+      params.append('timeRange', timeRange);
+
+      const response = await fetch(`/api/alerts?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        // 클라이언트 사이드에서 태그, 노드, 그룹 필터링
+        let filteredAlerts = data.data || [];
+        const currentTests = testsRef.current; // ref에서 가져오기
+        
+        // 태그 필터
+        if (selectedTags.length > 0) {
+          // 테스트 정보를 조회하여 태그 필터링
+          filteredAlerts = filteredAlerts.filter((alert: any) => {
+            const test = currentTests.find(t => t.syntheticTestId === alert.testId);
+            if (!test || !test.tags) return false;
+            
+            let testTags: string[] = [];
+            if (typeof test.tags === 'string') {
+              const trimmed = test.tags.trim();
+              if (!trimmed) return false;
+              
+              if (trimmed.startsWith('[')) {
+                try {
+                  testTags = JSON.parse(trimmed);
+                } catch (e) {
+                  testTags = trimmed.split(',').map(t => t.trim()).filter(t => t);
+                }
+              } else {
+                testTags = trimmed.split(',').map(t => t.trim()).filter(t => t);
+              }
+            } else if (Array.isArray(test.tags)) {
+              testTags = test.tags;
+            }
+            
+            return testTags.some(tag => selectedTags.includes(tag));
+          });
+        }
+        
+        // 노드 필터
+        if (selectedNodes.length > 0) {
+          filteredAlerts = filteredAlerts.filter((alert: any) => 
+            selectedNodes.includes(alert.nodeId)
+          );
+        }
+        
+        // 그룹 필터
+        if (selectedGroups.length > 0) {
+          filteredAlerts = filteredAlerts.filter((alert: any) => {
+            const test = currentTests.find(t => t.syntheticTestId === alert.testId);
+            if (!test) return false;
+            return test.targetType === 'group' && selectedGroups.includes(test.targetId);
+          });
+        }
+        
+        setAlertData(filteredAlerts);
+      } else {
+        console.error('Failed to fetch alerts:', data.error);
+        setAlertData([]);
+      }
+    } catch (e) {
+      console.error('Failed to fetch alerts:', e);
+      setAlertData([]);
+    }
+  }, [timeRange, selectedTags, selectedNodes, selectedGroups]); // tests 제거
+
+  // 초기 데이터 로드 - 한 번만 실행
   useEffect(() => {
     async function initialLoad() {
       setIsLoading(true);
@@ -117,136 +179,32 @@ export function AlertMonitoringPanel() {
       setIsLoading(false);
     }
     initialLoad();
-  }, [fetchData]);
+  }, []); // 빈 배열
 
-  // 10초마다 자동 갱신
+  // tests가 로드된 후 최초 알럿 조회
+  useEffect(() => {
+    if (tests.length > 0 && !isLoading) {
+      fetchAlerts();
+    }
+  }, [tests.length, isLoading]); // tests.length만 의존
+
+  // 필터 변경 시 알럿 데이터 재조회
+  useEffect(() => {
+    if (tests.length > 0) {
+      fetchAlerts();
+    }
+  }, [timeRange, selectedTags, selectedNodes, selectedGroups, fetchAlerts]); // fetchAlerts는 포함 (useCallback으로 안정화됨)
+
+  // 5분마다 자동 갱신
   useEffect(() => {
     const intervalId = setInterval(() => {
-      fetchData();
-    }, 10000); // 10초
+      if (tests.length > 0) {
+        fetchAlerts();
+      }
+    }, 300000); // 5분
 
     return () => clearInterval(intervalId);
-  }, [fetchData]);
-
-  // 모든 태그 목록 계산
-  // const allTags = useMemo(() => {
-  //   const uniqueTags = new Set(
-  //     tests.flatMap(test => test.tags || [])
-  //   );
-  //   return Array.from(uniqueTags).sort();
-  // }, [tests]);
-
-  const alertData = useMemo(() => {
-    const alerts: Alert[] = [];
-    
-    // 시간 범위 계산
-    const now = new Date();
-    let timeThreshold: Date;
-    
-    switch (timeRange) {
-      case '1h':
-        timeThreshold = new Date(now.getTime() - 1 * 60 * 60 * 1000);
-        break;
-      case '6h':
-        timeThreshold = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-        break;
-      case '24h':
-        timeThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        timeThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        timeThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    }
-
-    // 필터링된 테스트만 처리
-    let filteredTests = tests;
-    
-    // 태그 필터 (OR 조건 - 선택된 태그 중 하나라도 있으면 포함)
-    if (selectedTags.length > 0) {
-      filteredTests = filteredTests.filter((test) => {
-        if (!test.tags) return false;
-        
-        let testTags: string[] = [];
-        
-        if (typeof test.tags === 'string') {
-          const trimmed = test.tags.trim();
-          if (!trimmed) return false;
-          
-          // JSON 배열인지 확인
-          if (trimmed.startsWith('[')) {
-            try {
-              testTags = JSON.parse(trimmed);
-            } catch (e) {
-              console.warn('Failed to parse tags as JSON:', trimmed);
-              return false;
-            }
-          } else {
-            // 쉼표로 구분된 문자열로 처리
-            testTags = trimmed.split(',').map(t => t.trim()).filter(t => t);
-          }
-        } else if (Array.isArray(test.tags)) {
-          testTags = test.tags;
-        }
-        
-        return testTags.some(tag => selectedTags.includes(tag));
-      });
-    }
-    
-    // 노드 필터 (OR 조건 - 선택된 노드 중 하나라도 해당하면 포함)
-    if (selectedNodes.length > 0) {
-      filteredTests = filteredTests.filter((test) => {
-        if (test.targetType === 'node') {
-          return selectedNodes.includes(test.targetId);
-        } else if (test.targetType === 'group') {
-          const group = nodeGroups.find(g => g.nodeGroupId === test.targetId);
-          return group ? group.nodeIds.some(nodeId => selectedNodes.includes(nodeId)) : false;
-        }
-        return false;
-      });
-    }
-    
-    // 노드 그룹 필터 (OR 조건 - 선택된 그룹 중 하나라도 해당하면 포함)
-    if (selectedGroups.length > 0) {
-      filteredTests = filteredTests.filter((test) => {
-        return test.targetType === 'group' && selectedGroups.includes(test.targetId);
-      });
-    }
-
-    filteredTests.forEach((test) => {
-      // 시간 범위에 맞는 결과만 필터링
-      const filteredResults = testResults.filter((r) => {
-        const executedTime = new Date(r.executedAt);
-        return r.syntheticTestId === test.syntheticTestId && executedTime >= timeThreshold;
-      });
-
-      filteredResults.forEach((result) => {
-        if (result.responseTimeMs > test.alertThresholdMs) {
-          const node = nodes.find((n) => n.nodeId === result.nodeId);
-          const api = apis.find((a) => a.apiId === test.apiId);
-
-          alerts.push({
-            testId: test.syntheticTestId,
-            testName: test.syntheticTestName,
-            nodeId: result.nodeId,
-            nodeName: node?.nodeName || 'Unknown',
-            apiId: test.apiId,
-            apiName: api?.apiName || 'Unknown',
-            apiUri: api?.uri || '',
-            apiMethod: api?.method || 'GET',
-            parameterValues: test.apiParameterValues || {},
-            responseTime: result.responseTimeMs,
-            threshold: test.alertThresholdMs,
-            timestamp: result.executedAt,
-            statusCode: result.statusCode,
-          });
-        }
-      });
-    });
-
-    return alerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [tests, testResults, nodes, nodeGroups, apis, timeRange, selectedTags, selectedNodes, selectedGroups]);
+  }, [fetchAlerts]); // fetchAlerts는 useCallback으로 안정화됨
 
   const summary = useMemo(() => {
     const affectedTests = new Set(alertData.map((a) => a.testId)).size;
@@ -272,13 +230,26 @@ export function AlertMonitoringPanel() {
   }, [selectedAlert, tests]);
 
   // 선택된 테스트의 최근 히스토리 가져오기
-  const selectedTestHistory = useMemo(() => {
-    if (!selectedAlert) return [];
-    return testResults
-      .filter(r => r.syntheticTestId === selectedAlert.testId)
-      .slice(0, 10)
-      .sort((a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime());
-  }, [selectedAlert, testResults]);
+  const [selectedTestHistory, setSelectedTestHistory] = useState<SyntheticTestHistory[]>([]);
+  
+  useEffect(() => {
+    if (selectedAlert && isDialogOpen) {
+      // 선택된 알럿의 테스트 히스토리 조회
+      fetch(`/api/synthetic-tests/${selectedAlert.testId}/history?limit=10`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.data)) {
+            setSelectedTestHistory(data.data);
+          } else {
+            setSelectedTestHistory([]);
+          }
+        })
+        .catch(error => {
+          console.error('Failed to fetch test history:', error);
+          setSelectedTestHistory([]);
+        });
+    }
+  }, [selectedAlert, isDialogOpen]);
 
   // 파라미터 이름 가져오기 헬퍼 함수
   const getParameterName = (apiId: number, parameterId: number): string => {

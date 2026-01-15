@@ -42,6 +42,7 @@ export interface SyntheticTest {
   updatedAt?: Date;
 }
 
+// TestHistory는 DB에서 조회한 원본 데이터 (success: 'Y' | 'N')
 export interface TestHistory {
   syntheticTestHistoryId: number;
   syntheticTestId: number;
@@ -50,11 +51,47 @@ export interface TestHistory {
   host?: string;
   port?: number;
   statusCode: number;
-  success: 'Y' | 'N';
+  success: 'Y' | 'N'; // DB 원본 값
   responseTimeMs: number;
   executedAt: Date;
   input?: string;
   output?: string;
+}
+
+// 클라이언트로 전송할 변환된 데이터 (success: boolean)
+export interface TestHistoryResponse {
+  syntheticTestHistoryId: number;
+  syntheticTestId: number;
+  nodeId: number;
+  nodeName?: string;
+  host?: string;
+  port?: number;
+  statusCode: number;
+  success: boolean; // 'Y'/'N'을 boolean으로 변환
+  responseTimeMs: number;
+  executedAt: string; // ISO 8601 문자열
+  input?: string;
+  output?: string;
+}
+
+/**
+ * DB의 TestHistory를 클라이언트용 TestHistoryResponse로 변환
+ */
+export function convertTestHistoryToResponse(history: TestHistory): TestHistoryResponse {
+  return {
+    syntheticTestHistoryId: history.syntheticTestHistoryId,
+    syntheticTestId: history.syntheticTestId,
+    nodeId: history.nodeId,
+    nodeName: history.nodeName,
+    host: history.host,
+    port: history.port,
+    statusCode: history.statusCode,
+    success: history.success === 'Y', // 'Y'/'N'을 boolean으로 변환
+    responseTimeMs: history.responseTimeMs,
+    executedAt: history.executedAt.toISOString(),
+    input: history.input,
+    output: history.output,
+  };
 }
 
 export interface CreateSyntheticTestInput {

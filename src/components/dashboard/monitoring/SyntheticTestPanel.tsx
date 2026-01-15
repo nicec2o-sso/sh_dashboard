@@ -136,11 +136,11 @@ export function SyntheticTestPanel() {
     initialLoad();
   }, [fetchData]);
 
-  // 10초마다 자동 갱신 (백그라운드)
+  // 5분마다 자동 갱신 (백그라운드)
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000); // 10초
+    }, 300000); // 10초
 
     return () => clearInterval(intervalId);
   }, [fetchData]);

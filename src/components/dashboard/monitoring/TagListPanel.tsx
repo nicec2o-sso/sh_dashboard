@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { Loader2, Search, Trash2 } from 'lucide-react';
 import { Tag, Node, Api, SyntheticTest } from '@/types';
 
@@ -21,6 +22,10 @@ export function TagListPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // 페이징 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // 데이터 fetch 함수
   const fetchData = useCallback(async () => {
@@ -59,11 +64,11 @@ export function TagListPanel() {
     initialLoad();
   }, [fetchData]);
 
-  // 10초마다 자동 갱신
+  // 5분마다 자동 갱신
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchData();
-    }, 10000);
+    }, 300000);
 
     return () => clearInterval(intervalId);
   }, [fetchData]);
@@ -154,6 +159,17 @@ export function TagListPanel() {
       return false;
     });
   }, [tagsWithUsage, searchQuery]);
+
+  // 페이징 계산
+  const totalPages = Math.ceil(filteredTags.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTags = filteredTags.slice(startIndex, endIndex);
+
+  // 검색어 변경 시 첫 페이지로 이동
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, itemsPerPage]);
 
   // 태그 삭제 함수
   const deleteTag = async (tagId: number, tagName: string) => {
@@ -271,7 +287,23 @@ export function TagListPanel() {
       {/* 테이블 형식 태그 목록 */}
       <Card>
         <CardHeader>
-          <CardTitle>태그 목록</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>태그 목록</CardTitle>
+            {/* 페이지당 항목 수 선택 */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">페이지당 항목 수:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={5}>5개</option>
+                <option value={10}>10개</option>
+                <option value={20}>20개</option>
+                <option value={50}>50개</option>
+              </select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredTags.length === 0 ? (
@@ -279,139 +311,154 @@ export function TagListPanel() {
               {searchQuery ? '검색 결과가 없습니다' : '등록된 태그가 없습니다'}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-gray-300 bg-gray-50">
-                    <th className="text-left p-3 font-semibold text-sm text-gray-700 w-40">
-                      태그명
-                    </th>
-                    <th className="text-left p-3 font-semibold text-sm text-gray-700">
-                      노드명
-                    </th>
-                    <th className="text-left p-3 font-semibold text-sm text-gray-700">
-                      API명
-                    </th>
-                    <th className="text-left p-3 font-semibold text-sm text-gray-700">
-                      Synthetic Test명
-                    </th>
-                    <th className="text-center p-3 font-semibold text-sm text-gray-700 w-24">
-                      상태
-                    </th>
-                    <th className="text-center p-3 font-semibold text-sm text-gray-700 w-20">
-                      삭제
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTags.map((tag, index) => (
-                    <tr
-                      key={tag.tagId}
-                      className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                      }`}
-                    >
-                      {/* 태그명 */}
-                      <td className="p-3">
-                        <div className="font-medium text-gray-900">{tag.tagName}</div>
-                      </td>
-
-                      {/* 노드 */}
-                      <td className="p-3">
-                        {tag.nodes.length === 0 ? (
-                          <span className="text-xs text-gray-400">-</span>
-                        ) : (
-                          <div className="space-y-1">
-                            {tag.nodes.slice(0, 2).map((node) => (
-                              <div key={node.nodeId} className="flex items-center gap-1">
-                                <span className="text-sm text-gray-700 truncate max-w-[150px]">
-                                  {node.nodeName}
-                                </span>
-                              </div>
-                            ))}
-                            {tag.nodes.length > 2 && (
-                              <div className="text-xs text-blue-600 font-medium">
-                                +{tag.nodes.length - 2}개 더보기
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* API */}
-                      <td className="p-3">
-                        {tag.apis.length === 0 ? (
-                          <span className="text-xs text-gray-400">-</span>
-                        ) : (
-                          <div className="space-y-1">
-                            {tag.apis.slice(0, 2).map((api) => (
-                              <div key={api.apiId} className="flex items-center gap-1">
-                                <span className="text-sm text-gray-700 truncate max-w-[150px]">
-                                  {api.apiName}
-                                </span>
-                              </div>
-                            ))}
-                            {tag.apis.length > 2 && (
-                              <div className="text-xs text-blue-600 font-medium">
-                                +{tag.apis.length - 2}개 더보기
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Synthetic Test */}
-                      <td className="p-3">
-                        {tag.tests.length === 0 ? (
-                          <span className="text-xs text-gray-400">-</span>
-                        ) : (
-                          <div className="space-y-1">
-                            {tag.tests.slice(0, 2).map((test) => (
-                              <div key={test.syntheticTestId} className="flex items-center gap-1">
-                                <span className="text-sm text-gray-700 truncate max-w-[150px]">
-                                  {test.syntheticTestName}
-                                </span>
-                              </div>
-                            ))}
-                            {tag.tests.length > 2 && (
-                              <div className="text-xs text-blue-600 font-medium">
-                                +{tag.tests.length - 2}개 더보기
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* 상태 */}
-                      <td className="p-3 text-center">
-                        {tag.nodes.length === 0 && tag.apis.length === 0 && tag.tests.length === 0 ? (
-                          <Badge variant="outline" className="text-gray-500 bg-gray-100">
-                            미사용
-                          </Badge>
-                        ) : (
-                          <Badge variant="default" className="bg-green-500">
-                            사용중
-                          </Badge>
-                        )}
-                      </td>
-
-                      {/* 삭제 버튼 */}
-                      <td className="p-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteTag(tag.tagId, tag.tagName)}
-                          className="hover:bg-red-50"
-                          title="태그 삭제"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </Button>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-gray-300 bg-gray-50">
+                      <th className="text-left p-3 font-semibold text-sm text-gray-700 w-40">
+                        태그명
+                      </th>
+                      <th className="text-left p-3 font-semibold text-sm text-gray-700">
+                        노드명
+                      </th>
+                      <th className="text-left p-3 font-semibold text-sm text-gray-700">
+                        API명
+                      </th>
+                      <th className="text-left p-3 font-semibold text-sm text-gray-700">
+                        Synthetic Test명
+                      </th>
+                      <th className="text-center p-3 font-semibold text-sm text-gray-700 w-24">
+                        상태
+                      </th>
+                      <th className="text-center p-3 font-semibold text-sm text-gray-700 w-20">
+                        삭제
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedTags.map((tag, index) => (
+                      <tr
+                        key={tag.tagId}
+                        className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                        }`}
+                      >
+                        {/* 태그명 */}
+                        <td className="p-3">
+                          <div className="font-medium text-gray-900">{tag.tagName}</div>
+                        </td>
+
+                        {/* 노드 */}
+                        <td className="p-3">
+                          {tag.nodes.length === 0 ? (
+                            <span className="text-xs text-gray-400">-</span>
+                          ) : (
+                            <div className="space-y-1">
+                              {tag.nodes.slice(0, 2).map((node) => (
+                                <div key={node.nodeId} className="flex items-center gap-1">
+                                  <span className="text-sm text-gray-700 truncate max-w-[150px]">
+                                    {node.nodeName}
+                                  </span>
+                                </div>
+                              ))}
+                              {tag.nodes.length > 2 && (
+                                <div className="text-xs text-blue-600 font-medium">
+                                  +{tag.nodes.length - 2}개 더보기
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* API */}
+                        <td className="p-3">
+                          {tag.apis.length === 0 ? (
+                            <span className="text-xs text-gray-400">-</span>
+                          ) : (
+                            <div className="space-y-1">
+                              {tag.apis.slice(0, 2).map((api) => (
+                                <div key={api.apiId} className="flex items-center gap-1">
+                                  <span className="text-sm text-gray-700 truncate max-w-[150px]">
+                                    {api.apiName}
+                                  </span>
+                                </div>
+                              ))}
+                              {tag.apis.length > 2 && (
+                                <div className="text-xs text-blue-600 font-medium">
+                                  +{tag.apis.length - 2}개 더보기
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Synthetic Test */}
+                        <td className="p-3">
+                          {tag.tests.length === 0 ? (
+                            <span className="text-xs text-gray-400">-</span>
+                          ) : (
+                            <div className="space-y-1">
+                              {tag.tests.slice(0, 2).map((test) => (
+                                <div key={test.syntheticTestId} className="flex items-center gap-1">
+                                  <span className="text-sm text-gray-700 truncate max-w-[150px]">
+                                    {test.syntheticTestName}
+                                  </span>
+                                </div>
+                              ))}
+                              {tag.tests.length > 2 && (
+                                <div className="text-xs text-blue-600 font-medium">
+                                  +{tag.tests.length - 2}개 더보기
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 상태 */}
+                        <td className="p-3 text-center">
+                          {tag.nodes.length === 0 && tag.apis.length === 0 && tag.tests.length === 0 ? (
+                            <Badge variant="outline" className="text-gray-500 bg-gray-100">
+                              미사용
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="bg-green-500">
+                              사용중
+                            </Badge>
+                          )}
+                        </td>
+
+                        {/* 삭제 버튼 */}
+                        <td className="p-3 text-center">
+                          {tag.nodes.length === 0 && tag.apis.length === 0 && tag.tests.length === 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteTag(tag.tagId, tag.tagName)}
+                              className="hover:bg-red-50"
+                              title="태그 삭제"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>  
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 페이징 컴포넌트 */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredTags.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>
