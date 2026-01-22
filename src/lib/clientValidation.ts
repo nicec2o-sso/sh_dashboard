@@ -34,7 +34,8 @@ export function validateNodeData(data: {
       return '호스트는 100자 이하여야 합니다.';
     }
     // 간단한 호스트 형식 검증
-    const hostPattern = /^[a-zA-Z0-9.-]+$/;
+    // const hostPattern = /^[a-zA-Z0-9.-]+$/;
+    const hostPattern = /^(\/[a-zA-Z0-9._~%!$&'()*+,;=:@-]*)+$/; // 김병규님 요청으로 변경처리 1.16일
     if (!hostPattern.test(data.host)) {
       return '올바른 호스트 형식이 아닙니다 (예: example.com, 192.168.1.1)';
     }
@@ -135,7 +136,8 @@ export function validateApiData(data: {
     if (!data.uri.startsWith('/')) {
       return 'URI는 / 로 시작해야 합니다.';
     }
-    const urlPattern = /^\/[a-zA-Z\/]+$/;
+    //const urlPattern = /^\/[a-zA-Z\/]+$/;
+    const urlPattern = /^(\/[a-zA-Z0-9._~%!$&'()*+,;=:@-]*)+$/; // 김병규님 요청으로 변경처리 1.16일
     if (!urlPattern.test(data.uri)) {
       return 'URI패턴이 아닙니다.';
     }
@@ -259,7 +261,7 @@ export function validateSyntheticTestData(data: {
   if (data.targetId !== undefined) {
     const targetId = typeof data.targetId === 'string' ? parseInt(data.targetId) : data.targetId;
     if (isNaN(targetId) || targetId < 1) {
-      return '대상 ID는 1 이상의 숫자여야 합니다.';
+      return '대상 선택은 필수 입니다.';
     }
   }
 
@@ -267,7 +269,7 @@ export function validateSyntheticTestData(data: {
   if (data.apiId !== undefined) {
     const apiId = typeof data.apiId === 'string' ? parseInt(data.apiId) : data.apiId;
     if (isNaN(apiId) || apiId < 1) {
-      return 'API ID는 1 이상의 숫자여야 합니다.';
+      return 'API는 필수입니다.';
     }
   }
 
@@ -298,11 +300,11 @@ export function validateSyntheticTestData(data: {
     if (data.tags.length > 500) {
       return '태그는 500자 이하여야 합니다.';
     }
-    // 빈 태그 검증
-    const tagArray = data.tags.split(',').map(t => t.trimStart().trimEnd());
-    if (tagArray.some(t => t.length === 0)) {
-      return '태그에 빈 값이 포함되어 있습니다.';
-    }
+    // 빈 태그 허용
+    // const tagArray = data.tags.split(',').map(t => t.trimStart().trimEnd());
+    // if (tagArray.some(t => t.length === 0)) {
+    //   return '태그에 빈 값이 포함되어 있습니다.';
+    // }
   }
 
   return null;

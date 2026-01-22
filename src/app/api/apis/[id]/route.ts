@@ -142,22 +142,15 @@ export async function DELETE(
       if (serviceError instanceof Error) {
         if (serviceError.message.includes('not found')) {
           return NextResponse.json(
-            { success: false, error: 'API를 찾을 수 없습니다' },
+            { success: false, message: 'API를 찾을 수 없습니다' },
             { status: 404 }
           );
-        } else if (serviceError.message.includes('referenced by')) {
+        } else {
+          // 에러 메시지를 그대로 전달
           return NextResponse.json(
             { 
               success: false, 
-              error: 'synthetic tests 에서 사용되고 있는 API는 삭제할 수 없습니다',
-            },
-            { status: 400 }
-          );
-        }else{
-          return NextResponse.json(
-            { 
-              success: false, 
-              error: 'API 삭제 중 오류가 발생했습니다',
+              message: serviceError.message,
             },
             { status: 400 }
           );
@@ -170,8 +163,7 @@ export async function DELETE(
     return NextResponse.json(
       { 
         success: false, 
-        error: 'API 삭제 중 오류가 발생했습니다',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'API 삭제 중 오류가 발생했습니다'
       },
       { status: 500 }
     );

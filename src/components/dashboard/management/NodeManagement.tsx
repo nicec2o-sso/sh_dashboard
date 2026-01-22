@@ -251,7 +251,6 @@ export function NodeManagement() {
       alert('노드가 성공적으로 삭제되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : '노드 삭제에 실패했습니다.';
-      console.error("노드 삭제 실패:", message);
       alert(`노드 삭제 실패: ${message}`);
     }
   };
@@ -316,7 +315,7 @@ export function NodeManagement() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>노드 이름 *</Label>
+              <Label>노드 이름 <span className="text-red-500">*</span></Label>
               <Input
                 value={newNode.nodeName}
                 onChange={(e) => setNewNode({ ...newNode, nodeName: e.target.value })}
@@ -326,7 +325,7 @@ export function NodeManagement() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>호스트 *</Label>
+                <Label>호스트 <span className="text-red-500">*</span></Label>
                 <Input
                   value={newNode.host}
                   onChange={(e) => {
@@ -337,7 +336,7 @@ export function NodeManagement() {
                 />
               </div>
               <div>
-                <Label>포트 *</Label>
+                <Label>포트 <span className="text-red-500">*</span></Label>
                 <Input
                   type="number"
                   value={newNode.port}

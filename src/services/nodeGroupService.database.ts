@@ -15,6 +15,7 @@ import {
   INSERT_NODE_GROUP_MEMBER,
   DELETE_ALL_NODE_GROUP_MEMBERS,
   CHECK_NODE_GROUP_NAME_EXISTS,
+  CHECK_NODE_GROUP_USED_IN_SYNTHETIC_TESTS,
 } from '@/queries/nodeGroupQueries';
 
 export interface NodeGroup {
@@ -282,6 +283,17 @@ export class NodeGroupServiceDB {
    */
   static async deleteNodeGroup(nodeGroupId: number): Promise<void> {
     try {
+      // 1. Synthetic Test에서 사용 중인지 확인
+      console.log(`CHECK_NODE_GROUP_USED_IN_SYNTHETIC_TESTS : `, CHECK_NODE_GROUP_USED_IN_SYNTHETIC_TESTS, nodeGroupId);
+      const usageResult = await db.query<{ COUNT: number; testNames: string }>(
+        CHECK_NODE_GROUP_USED_IN_SYNTHETIC_TESTS,
+        { nodeGroupId }
+      );
+      
+      if (usageResult[0]?.COUNT > 0) {
+        throw new Error(`이 노드 그룹은 ${usageResult[0]?.testNames}에서 사용 중이므로 삭제할 수 없습니다.`);
+      }
+    
       console.log(`DELETE_NODE_GROUP : `,DELETE_NODE_GROUP,nodeGroupId);
       const rowsAffected = await db.execute(DELETE_NODE_GROUP, { nodeGroupId }, true);
 

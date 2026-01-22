@@ -141,12 +141,12 @@ export async function DELETE(
             { success: false, error: 'Node group not found' },
             { status: 404 }
           );
-        }
-        if (serviceError.message.includes('referenced by')) {
+        } else {
+          // 에러 메시지를 그대로 전달
           return NextResponse.json(
             { 
               success: false, 
-              error: 'Cannot delete node group because it is referenced by other records',
+              message: serviceError.message,
             },
             { status: 400 }
           );

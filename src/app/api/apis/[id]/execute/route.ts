@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiService } from '@/services/apiService'; 
-import { ApiParameterService } from '@/services/apiParameterService'; 
 import { ApiServiceDB } from '@/services/apiService.database';
 
 /**
@@ -12,7 +11,6 @@ export async function POST(
   request: NextRequest, 
   context: { params: Promise<{ id: string }> }
 ) {
-    console.log(`2221111111111111111111111111112222222222:`);
   try {
     const contextParams = await context.params;
     const apiId = parseInt(contextParams.id, 10);

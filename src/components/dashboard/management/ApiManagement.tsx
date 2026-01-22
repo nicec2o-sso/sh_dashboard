@@ -435,7 +435,6 @@ export function ApiManagement() {
       alert('API가 성공적으로 삭제되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : 'API 삭제에 실패했습니다.';
-      console.error("API 삭제 실패:", message);
       alert(`API 삭제 실패: ${message}`);
     }
   };

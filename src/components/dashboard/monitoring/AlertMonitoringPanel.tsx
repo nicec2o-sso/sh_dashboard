@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Node, NodeGroup, SyntheticTest, SyntheticTestHistory, Api, ApiParameter, Tag } from '@/types';
 
 interface Alert {
@@ -477,7 +477,7 @@ export function AlertMonitoringPanel() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-semibold text-gray-900">{alert.testName}</span>
-                          <ExternalLink className="w-3 h-3 text-gray-400" />
+                          
                           <Badge variant="outline" className="text-xs">
                             {alert.statusCode}
                           </Badge>

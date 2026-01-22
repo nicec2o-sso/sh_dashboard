@@ -17,6 +17,7 @@ import {
   INSERT_API_PARAMETER,
   CHECK_API_NAME_EXISTS,
   CHECK_API_URI_METHOD_EXISTS,
+  CHECK_API_USED_IN_SYNTHETIC_TESTS,
 } from '@/queries/apiQueries';
 import {
   SELECT_TAG_BY_NAME,
@@ -344,6 +345,18 @@ export class ApiServiceDB {
    */
   static async deleteApi(apiId: number): Promise<void> {
     try {
+      // 1. Synthetic Test에서 사용 중인지 확인
+      console.log(`CHECK_API_USED_IN_SYNTHETIC_TESTS : `, CHECK_API_USED_IN_SYNTHETIC_TESTS, apiId);
+      const usageResult = await db.query<{ COUNT: number; testNames: string }>(
+        CHECK_API_USED_IN_SYNTHETIC_TESTS,
+        { apiId }
+      );
+
+      if (usageResult[0]?.COUNT > 0) {
+        throw new Error(`이 API는 ${usageResult[0]?.testNames}에서 사용 중이므로 삭제할 수 없습니다.`);
+      }
+
+      // 2. 사용 중이 아니면 삭제 진행
       console.log(`DELETE_API : `,DELETE_API,apiId);
       const rowsAffected = await db.execute(DELETE_API, { apiId }, true);
 
@@ -353,9 +366,6 @@ export class ApiServiceDB {
 
       console.log('[ApiService] API deleted:', apiId);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('ORA-02292')) {
-        throw new Error('Cannot delete API because it is referenced by synthetic tests');
-      }
       console.error('[ApiService] Error deleting API:', error);
       throw error;
     }

@@ -14,6 +14,7 @@ import {
   CHECK_NODE_HOST_PORT_EXISTS,
   SELECT_ALL_NODES_WITH_TAGS,
   SELECT_NODE_BY_ID_WITH_TAGS,
+  CHECK_NODE_USED_IN_SYNTHETIC_TESTS,
 } from '@/queries/nodeQueries';
 import {
   SELECT_TAG_BY_NAME,
@@ -272,6 +273,17 @@ export class NodeServiceDB {
    */
   static async deleteNode(nodeId: number): Promise<void> {
     try {
+      // 1. Synthetic Test에서 사용 중인지 확인
+      console.log(`CHECK_NODE_USED_IN_SYNTHETIC_TESTS : `, CHECK_NODE_USED_IN_SYNTHETIC_TESTS, nodeId);
+      const usageResult = await db.query<{ COUNT: number; testNames: string }>(
+        CHECK_NODE_USED_IN_SYNTHETIC_TESTS,
+        { nodeId }
+      );
+
+      if (usageResult[0]?.COUNT > 0) {
+        throw new Error(`이 노드는 ${usageResult[0]?.testNames}에서 사용 중이므로 삭제할 수 없습니다.`);
+      }
+
       console.log(`DELETE_NODE : `,DELETE_NODE,nodeId);
       const rowsAffected = await db.execute(DELETE_NODE, { nodeId }, true);
 

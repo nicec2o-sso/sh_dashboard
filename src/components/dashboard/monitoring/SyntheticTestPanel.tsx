@@ -156,7 +156,11 @@ export function SyntheticTestPanel() {
     if (selectedTags.length > 0) {
       filtered = filtered.filter((test) => {
         // 1. 테스트 자체의 태그 확인
-        const testHasTag = test.tags.some(tag => selectedTags.includes(tag));
+        // tags가 문자열인 경우 배열로 변환
+        const testTags = typeof test.tags === 'string' 
+          ? test.tags.split(',').map(t => t.trim()).filter(Boolean)
+          : (Array.isArray(test.tags) ? test.tags : []);
+        const testHasTag = testTags.some(tag => selectedTags.includes(tag));
         
         // 2. 테스트 대상 노드들의 태그 확인
         let targetNodeHasTag = false;
@@ -756,9 +760,17 @@ export function SyntheticTestPanel() {
                               대상: {targetName} | 실행 주기: {test.intervalSeconds}초 | 알럿 기준: {test.alertThresholdMs}ms
                             </CardDescription>
                             <div className="flex flex-wrap gap-1 mt-2">
-                              <Badge key={test.tags} variant="secondary" className="text-xs">
-                                {test.tags}
-                              </Badge>
+                              {/* 태그가 문자열인 경우 배열로 변환 */}
+                              {(() => {
+                                const testTags = typeof test.tags === 'string' 
+                                  ? test.tags.split(',').map(t => t.trim()).filter(Boolean)
+                                  : (Array.isArray(test.tags) ? test.tags : []);
+                                return testTags.map((tag, index) => (
+                                  <Badge key={`${test.syntheticTestId}-tag-${index}`} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ));
+                              })()}
                             </div>
                           </div>
                           <div className="flex gap-2">

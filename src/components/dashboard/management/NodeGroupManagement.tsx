@@ -210,7 +210,6 @@ export function NodeGroupManagement() {
       alert('노드 그룹이 성공적으로 삭제되었습니다.');
     } catch (e) {
       const message = e instanceof Error ? e.message : '그룹 삭제에 실패했습니다.';
-      console.error("그룹 삭제 실패:", message);
       alert(`그룹 삭제 실패: ${message}`);
     }
   };
@@ -282,7 +281,7 @@ export function NodeGroupManagement() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>그룹 이름 *</Label>
+              <Label>그룹 이름 <span className="text-red-500">*</span></Label>
               <Input
                 value={newGroup.nodeGroupName}
                 onChange={(e) => setNewGroup({ ...newGroup, nodeGroupName: e.target.value })}
@@ -300,7 +299,7 @@ export function NodeGroupManagement() {
             </div>
 
             <div>
-              <Label>포함할 노드 *</Label>
+              <Label>포함할 노드 <span className="text-red-500">*</span></Label>
               <div className="border rounded-lg p-3 space-y-2 max-h-64 overflow-y-auto">
                 {nodes.length === 0 ? (
                   <div className="text-sm text-gray-500">사용 가능한 노드가 없습니다.</div>

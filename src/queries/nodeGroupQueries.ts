@@ -209,3 +209,16 @@ export const CHECK_NODE_GROUP_NAME_EXISTS = `
   WHERE NODE_GROUP_NAME = :nodeGroupName
   AND (:excludeId IS NULL OR NODE_GROUP_ID != :excludeId)
 `;
+
+/**
+ * 노드 그룹이 Synthetic Test에서 사용 중인지 확인
+ */
+export const CHECK_NODE_GROUP_USED_IN_SYNTHETIC_TESTS = `
+  SELECT 
+    COUNT(*) AS COUNT,
+    LISTAGG(SYNTHETIC_TEST_NAME, ', ') WITHIN GROUP (ORDER BY SYNTHETIC_TEST_NAME) AS "testNames"
+  FROM MT_SYNTHETIC_TESTS
+  WHERE TARGET_TYPE = 'group'
+    AND TARGET_ID = :nodeGroupId
+  GROUP BY TARGET_TYPE, TARGET_ID
+`;

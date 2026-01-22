@@ -317,3 +317,16 @@ export const CHECK_NODE_HOST_PORT_EXISTS = `
   AND PORT = :port
   AND (:excludeId IS NULL OR NODE_ID != :excludeId)
 `;
+
+/**
+ * 노드가 Synthetic Test에서 사용 중인지 확인
+ */
+export const CHECK_NODE_USED_IN_SYNTHETIC_TESTS = `
+  SELECT 
+    COUNT(*) AS COUNT,
+    LISTAGG(SYNTHETIC_TEST_NAME, ', ') WITHIN GROUP (ORDER BY SYNTHETIC_TEST_NAME) AS "testNames"
+  FROM MT_SYNTHETIC_TESTS
+  WHERE TARGET_TYPE = 'node'
+    AND TARGET_ID = :nodeId
+  GROUP BY TARGET_TYPE, TARGET_ID
+`;

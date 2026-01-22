@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Search, Trash2 } from 'lucide-react';
 import { Tag, Node, Api, SyntheticTest } from '@/types';
 
@@ -12,6 +13,14 @@ interface TagWithUsage extends Tag {
   nodes: Node[];
   apis: Api[];
   tests: SyntheticTest[];
+}
+
+// 모달 데이터 타입
+interface ModalData {
+  isOpen: boolean;
+  title: string;
+  type: 'nodes' | 'apis' | 'tests';
+  items: Node[] | Api[] | SyntheticTest[];
 }
 
 export function TagListPanel() {
@@ -26,6 +35,14 @@ export function TagListPanel() {
   // 페이징 상태
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // 모달 상태
+  const [modalData, setModalData] = useState<ModalData>({
+    isOpen: false,
+    title: '',
+    type: 'nodes',
+    items: [],
+  });
 
   // 데이터 fetch 함수
   const fetchData = useCallback(async () => {
@@ -170,6 +187,29 @@ export function TagListPanel() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, itemsPerPage]);
+
+  // 더보기 클릭 핸들러
+  const handleShowMore = (type: 'nodes' | 'apis' | 'tests', items: Node[] | Api[] | SyntheticTest[], tagName: string) => {
+    let title = '';
+    switch (type) {
+      case 'nodes':
+        title = `"${tagName}" 태그를 사용하는 노드 목록`;
+        break;
+      case 'apis':
+        title = `"${tagName}" 태그를 사용하는 API 목록 `;
+        break;
+      case 'tests':
+        title = `"${tagName}" 태그를 사용하는 Synthetic Test 목록 `;
+        break;
+    }
+    
+    setModalData({
+      isOpen: true,
+      title,
+      type,
+      items,
+    });
+  };
 
   // 태그 삭제 함수
   const deleteTag = async (tagId: number, tagName: string) => {
@@ -363,9 +403,12 @@ export function TagListPanel() {
                                 </div>
                               ))}
                               {tag.nodes.length > 2 && (
-                                <div className="text-xs text-blue-600 font-medium">
+                                <button
+                                  onClick={() => handleShowMore('nodes', tag.nodes, tag.tagName)}
+                                  className="text-xs text-blue-600 font-medium hover:text-blue-800 hover:underline cursor-pointer"
+                                >
                                   +{tag.nodes.length - 2}개 더보기
-                                </div>
+                                </button>
                               )}
                             </div>
                           )}
@@ -385,9 +428,12 @@ export function TagListPanel() {
                                 </div>
                               ))}
                               {tag.apis.length > 2 && (
-                                <div className="text-xs text-blue-600 font-medium">
+                                <button
+                                  onClick={() => handleShowMore('apis', tag.apis, tag.tagName)}
+                                  className="text-xs text-blue-600 font-medium hover:text-blue-800 hover:underline cursor-pointer"
+                                >
                                   +{tag.apis.length - 2}개 더보기
-                                </div>
+                                </button>
                               )}
                             </div>
                           )}
@@ -407,9 +453,12 @@ export function TagListPanel() {
                                 </div>
                               ))}
                               {tag.tests.length > 2 && (
-                                <div className="text-xs text-blue-600 font-medium">
+                                <button
+                                  onClick={() => handleShowMore('tests', tag.tests, tag.tagName)}
+                                  className="text-xs text-blue-600 font-medium hover:text-blue-800 hover:underline cursor-pointer"
+                                >
                                   +{tag.tests.length - 2}개 더보기
-                                </div>
+                                </button>
                               )}
                             </div>
                           )}
@@ -462,6 +511,69 @@ export function TagListPanel() {
           )}
         </CardContent>
       </Card>
+
+      {/* 더보기 모달 */}
+      <Dialog open={modalData.isOpen} onOpenChange={(open) => setModalData({ ...modalData, isOpen: open })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{modalData.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="max-h-[400px] overflow-y-auto">
+            <table className="w-full border-collapse">
+              <tbody>
+                {modalData.type === 'nodes' && (
+                  (modalData.items as Node[]).map((node, index) => (
+                    <tr
+                      key={node.nodeId}
+                      className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      }`}
+                    >
+                      <td className="p-3 text-sm text-gray-900">{node.nodeName}</td>
+                    </tr>
+                  ))
+                )}
+                
+                {modalData.type === 'apis' && (
+                  (modalData.items as Api[]).map((api, index) => (
+                    <tr
+                      key={api.apiId}
+                      className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      }`}
+                    >
+                      <td className="p-3 text-sm text-gray-900">{api.apiName}</td>
+                    </tr>
+                  ))
+                )}
+                
+                {modalData.type === 'tests' && (
+                  (modalData.items as SyntheticTest[]).map((test, index) => (
+                    <tr
+                      key={test.syntheticTestId}
+                      className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      }`}
+                    >
+                      <td className="p-3 text-sm text-gray-900">{test.syntheticTestName}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="flex justify-end pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => setModalData({ ...modalData, isOpen: false })}
+            >
+              닫기
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
