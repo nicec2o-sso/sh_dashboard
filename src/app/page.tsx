@@ -6,6 +6,7 @@ import { NodeMonitoringTab } from '@/components/dashboard/tabs/NodeMonitoringTab
 import { GrafanaDashboardTab } from '@/components/dashboard/tabs/GrafanaDashboardTab';
 import { NodeManagementTab } from '@/components/dashboard/tabs/NodeManagementTab';
 import { ApiManagementTab } from '@/components/dashboard/tabs/ApiManagementTab';
+import { TestHistoryTab } from '@/components/dashboard/tabs/TestHistoryTab';
 
 export default function MonitoringDashboard() {
   const [mainTab, setMainTab] = useState('monitoring');
@@ -22,6 +23,7 @@ export default function MonitoringDashboard() {
           {mainTab === 'grafana' && <GrafanaDashboardTab />}
           {mainTab === 'nodes' && <NodeManagementTab />}
           {mainTab === 'apis' && <ApiManagementTab />}
+          {mainTab === 'test-history' && <TestHistoryTab />}
         </main>
       </div>
     </div>

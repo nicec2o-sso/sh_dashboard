@@ -1,5 +1,5 @@
 
-import { Activity, Database, Server, Settings } from 'lucide-react';
+import { Activity, Database, Server, Settings, History } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -12,6 +12,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'grafana', label: '그라파나', icon: Database },
     { id: 'nodes', label: '노드 관리', icon: Server },
     { id: 'apis', label: 'API 관리', icon: Settings },
+    { id: 'test-history', label: '통합테스트 상세조회', icon: History },
   ];
 
   return (

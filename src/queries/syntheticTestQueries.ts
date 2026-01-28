@@ -448,3 +448,39 @@ export const SELECT_ALERTS = `
   ORDER BY h.EXECUTED_AT DESC
   FETCH FIRST :limit ROWS ONLY
 `;
+
+export const SEARCH_TEST_HISTORY = `
+  SELECT 
+    h.SYNTHETIC_TEST_HISTORY_ID as "syntheticTestHistoryId",
+    h.SYNTHETIC_TEST_ID as "syntheticTestId",
+    h.NODE_ID as "nodeId",
+    h.EXECUTED_AT as "executedAt",
+    h.STATUS_CODE as "statusCode",
+    h.SUCCESS as "success",
+    h.RESPONSE_TIME_MS as "responseTimeMs",
+    h.INPUT as "input",
+    h.OUTPUT as "output",
+    st.SYNTHETIC_TEST_NAME as "syntheticTestName",
+    st.ALERT_THRESHOLD_MS as "alertThresholdMs",
+    st.TAGS as "testTags",
+    n.NODE_NAME as "nodeName",
+    (
+      SELECT ng.NODE_GROUP_NAME 
+      FROM MT_NODE_GROUP_MEMBERS ngm 
+      JOIN MT_NODE_GROUPS ng ON ngm.NODE_GROUP_ID = ng.NODE_GROUP_ID 
+      WHERE ngm.NODE_ID = h.NODE_ID 
+      AND ROWNUM = 1
+    ) as "nodeGroupName"
+  FROM MT_SYNTHETIC_TEST_HISTORY h
+  LEFT JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
+  LEFT JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
+  WHERE 1=1
+`;
+
+export const SEARCH_TEST_HISTORY_COUNT = `
+  SELECT COUNT(*) as "total"
+  FROM MT_SYNTHETIC_TEST_HISTORY h
+  LEFT JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
+  LEFT JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
+  WHERE 1=1
+`;

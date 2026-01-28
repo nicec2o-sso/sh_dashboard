@@ -18,7 +18,9 @@ import {
   SELECT_ALL_TEST_HISTORY,
   DELETE_TEST_HISTORY,
   DELETE_TEST_HISTORIES_BY_TEST_ID,
-  SELECT_ALERTS
+  SELECT_ALERTS,
+  SEARCH_TEST_HISTORY,
+  SEARCH_TEST_HISTORY_COUNT
 } from '@/queries/syntheticTestQueries';
 
 // Export 타입들
@@ -39,6 +41,21 @@ export interface GetHistoriesOptions {
   startDate?: Date;
   endDate?: Date;
   limit?: number;
+}
+
+// 새로운 검색 옵션
+export interface SearchHistoriesOptions {
+  syntheticTestId?: number;
+  syntheticTestName?: string;
+  nodeId?: number;
+  nodeName?: string;
+  nodeGroupName?: string;
+  tagName?: string;
+  notificationEnabled?: boolean;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+  offset?: number;
 }
 
 export interface AlertRow {
@@ -149,6 +166,127 @@ export class SyntheticTestHistoryServiceDB {
       return histories;
     } catch (error) {
       console.error('[SyntheticTestHistoryServiceDB] Error fetching histories by node ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 통합테스트 실행 이력 검색
+   * 다양한 필터 조건으로 이력 검색
+   */
+  static async searchHistories(
+    options: SearchHistoriesOptions
+  ): Promise<{ histories: SyntheticTestHistoryRow[]; total: number }> {
+    try {
+      
+      let sql = SEARCH_TEST_HISTORY;
+      let where = '';
+      
+      const bindParams: any = {};
+      
+      // Synthetic Test ID 필터
+      if (options.syntheticTestId) {
+        where += ` AND h.SYNTHETIC_TEST_ID = :syntheticTestId`;
+        bindParams.syntheticTestId = options.syntheticTestId;
+      }
+      
+      // Synthetic Test Name 필터 (LIKE 검색)
+      if (options.syntheticTestName) {
+        where += ` AND UPPER(st.SYNTHETIC_TEST_NAME) LIKE UPPER(:syntheticTestName)`;
+        bindParams.syntheticTestName = `%${options.syntheticTestName}%`;
+      }
+      
+      // 노드 ID 필터
+      if (options.nodeId) {
+        where += ` AND h.NODE_ID = :nodeId`;
+        bindParams.nodeId = options.nodeId;
+      }
+      
+      // 노드 이름 필터 (LIKE 검색)
+      if (options.nodeName) {
+        where += ` AND UPPER(n.NODE_NAME) LIKE UPPER(:nodeName)`;
+        bindParams.nodeName = `%${options.nodeName}%`;
+      }
+      
+      // 노드 그룹 이름 필터 (EXISTS 서브쿼리 사용)
+      if (options.nodeGroupName) {
+        where += ` AND EXISTS (
+          SELECT 1 FROM MT_NODE_GROUP_MEMBERS ngm2 
+          JOIN MT_NODE_GROUPS ng2 ON ngm2.NODE_GROUP_ID = ng2.NODE_GROUP_ID 
+          WHERE ngm2.NODE_ID = h.NODE_ID 
+          AND UPPER(ng2.NODE_GROUP_NAME) LIKE UPPER(:nodeGroupName)
+        )`;
+        bindParams.nodeGroupName = `%${options.nodeGroupName}%`;
+      }
+      
+      // 태그 필터 (LIKE 검색 - TAGS 컨럼에서)
+      if (options.tagName) {
+        where += ` AND UPPER(st.TAGS) LIKE UPPER(:tagName)`;
+        bindParams.tagName = `%${options.tagName}%`;
+      }
+      
+      // 알림 발생 여부 필터
+      console.log('options.notificationEnabled : ',options.notificationEnabled);
+      if (options.notificationEnabled !== undefined) {
+        if (options.notificationEnabled == false) {
+          // 알림 발생: 실패 또는 임계값 초과
+          where += ` AND (h.SUCCESS = 'N' OR (st.ALERT_THRESHOLD_MS IS NOT NULL AND h.RESPONSE_TIME_MS > st.ALERT_THRESHOLD_MS))`;
+        } else {
+          // 정상: 성공 및 임계값 이하
+          where += ` AND h.SUCCESS = 'Y' AND (st.ALERT_THRESHOLD_MS IS NULL OR h.RESPONSE_TIME_MS <= st.ALERT_THRESHOLD_MS)`;
+        }
+      }
+      
+      // 날짜 범위 필터
+      if (options.startDate) {
+        where += ` AND h.EXECUTED_AT >= :startDate`;
+        bindParams.startDate = options.startDate;
+      }
+      
+      if (options.endDate) {
+        where += ` AND h.EXECUTED_AT <= :endDate`;
+        bindParams.endDate = options.endDate;
+      }
+      
+      // 정렬: 최신순
+      where += ` ORDER BY h.EXECUTED_AT DESC`;
+      
+      sql += where;
+
+      // LIMIT 및 OFFSET
+      const limit = options.limit || 50;
+      const offset = options.offset || 0;
+      
+      // Oracle 페이징
+      const pagedSql = `
+        SELECT * FROM (
+          SELECT a.*, ROWNUM rnum FROM (
+            ${sql}
+          ) a WHERE ROWNUM <= ${offset + limit}
+        ) WHERE rnum > ${offset}
+      `;
+      
+      console.log('Search SQL:', pagedSql);
+      console.log('Bind Params:', bindParams);
+      
+      const histories = await db.query<SyntheticTestHistoryRow>(
+        pagedSql,
+        bindParams
+      );
+      
+      // 총 개수 조회
+      let countSql = SEARCH_TEST_HISTORY_COUNT;
+      
+      countSql += where;
+
+      console.log('countSql:', countSql);
+
+      const countResult = await db.query<{ total: number }>(countSql, bindParams);
+      const total = countResult[0]?.total || 0;
+      
+      return { histories, total };
+    } catch (error) {
+      console.error('[SyntheticTestHistoryServiceDB] Error searching histories:', error);
       throw error;
     }
   }
