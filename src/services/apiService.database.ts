@@ -26,6 +26,7 @@ import {
   INSERT_API_TAG_MEMBER,
 } from '@/queries/tagQueries';
 import { Api, ApiParameter } from '@/types';
+import { tr } from 'date-fns/locale';
 
 export interface CreateApiInput {
   apiName: string;
@@ -219,7 +220,7 @@ export class ApiServiceDB {
                 apiParameterDesc: param.apiParameterDesc || null,
                 id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
               },
-              { autoCommit: false }
+              { autoCommit: true }
             );
           }
           console.log('[ApiService] Parameters added:', data.parameters.length);
@@ -287,10 +288,10 @@ export class ApiServiceDB {
               method: (data.method || existingApi.method).toUpperCase(),
               updatedId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
-            { autoCommit: false }
+            { autoCommit: true }
           );
 
-          const updatedId = updateResult.outBinds?.updatedId?.[0];
+          const updatedId = (updateResult.outBinds as any)?.updatedId?.[0];
           if (!updatedId) {
             throw new Error('Failed to update API');
           }
@@ -307,7 +308,7 @@ export class ApiServiceDB {
 
         // 3. 파라미터 교체
         if (data.parameters !== undefined) {
-          await conn.execute(DELETE_ALL_API_PARAMETERS, { apiId }, { autoCommit: false });
+          await conn.execute(DELETE_ALL_API_PARAMETERS, { apiId }, { autoCommit: true });
 
           for (const param of data.parameters) {
             console.log(`INSERT_API_PARAMETER : `,INSERT_API_PARAMETER,apiId,param);
@@ -321,7 +322,7 @@ export class ApiServiceDB {
                 apiParameterDesc: param.apiParameterDesc || null,
                 id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
               },
-              { autoCommit: false }
+              { autoCommit: true }
             );
           }
         }
@@ -391,7 +392,7 @@ export class ApiServiceDB {
         const existingTagResult = await conn.execute(
           SELECT_TAG_BY_NAME,
           { tagName },
-          { autoCommit: false, outFormat: oracledb.OUT_FORMAT_OBJECT }
+          { autoCommit: true, outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
         let tagId: number;
@@ -422,7 +423,7 @@ export class ApiServiceDB {
           await conn.execute(
             INSERT_API_TAG_MEMBER,
             { tagId, apiId },
-            { autoCommit: false }
+            { autoCommit: true }
           );
           
         } catch (err) {

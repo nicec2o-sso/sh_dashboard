@@ -1,222 +1,703 @@
-# 태그 멤버십 테이블 추가 가이드
+/**
+ * Oracle 데이터베이스 테이블 생성 스크립트
+ * 
+ * 이 파일은 프로젝트에 필요한 모든 테이블을 생성하는 SQL 스크립트입니다.
+ * Oracle Database 및 Autonomous Database에서 사용할 수 있습니다.
+ * 
+ * 실행 순서:
+ * 1. 기존 테이블 삭제 (DROP TABLE)
+ * 2. 시퀀스 생성 (CREATE SEQUENCE)
+ * 3. 테이블 생성 (CREATE TABLE)
+ * 4. 인덱스 생성 (CREATE INDEX)
+ * 5. 외래키 제약조건 생성 (ALTER TABLE ADD CONSTRAINT)
+ * 6. 주석 추가 (COMMENT ON)
+ * 
+ * 실행 방법:
+ * 1. SQL*Plus: sqlplus username/password@connection_string @schema_oracle.sql
+ * 2. SQL Developer: 스크립트를 열고 F5 (Run Script) 실행
+ * 3. SQL Worksheet (Autonomous DB): 스크립트 복사 후 실행
+ * 
+ * 주의사항:
+ * - 이 스크립트는 기존 테이블을 삭제합니다
+ * - 프로덕션 환경에서 실행 시 주의 필요
+ */
 
-## 개요
+SET ECHO ON
+SET SERVEROUTPUT ON
 
-현재 프로젝트에서 노드(`MT_NODES`)는 `MT_NODE_TAG_MEMBERS` 테이블을 통해 태그를 관리하고 있습니다. API와 Synthetic Test도 동일한 방식으로 태그를 관리하기 위해 별도의 멤버십 테이블이 필요합니다.
-
-## 필요한 테이블
-
-### 1. MT_API_TAG_MEMBERS
-- API와 태그 간의 다대다 관계 관리
-- 하나의 API가 여러 태그를 가질 수 있음
-
-### 2. MT_SYNTHETIC_TEST_TAG_MEMBERS  
-- Synthetic Test와 태그 간의 다대다 관계 관리
-- 하나의 테스트가 여러 태그를 가질 수 있음
-
-## 실행 방법
-
-### SQL*Plus 또는 SQL Developer
-```bash
-sqlplus username/password@connection_string @database/add_tag_members_tables.sql
-```
-
-### Oracle Cloud Console (Autonomous Database)
-1. Oracle Cloud Console에 로그인
-2. Autonomous Database 선택
-3. "Database Actions" → "SQL" 클릭
-4. `database/add_tag_members_tables.sql` 파일 내용을 복사하여 붙여넣기
-5. "Run Script" (F5) 실행
-
-## 생성되는 객체
-
-### 시퀀스
-```sql
-SEQ_MT_API_TAG_ID
-SEQ_MT_SYNTHETIC_TEST_TAG_ID
-```
-
-### 테이블
-```sql
-MT_API_TAG_MEMBERS
-  - API_TAG_ID (PK)
-  - TAG_ID (FK → MT_TAGS)
-  - API_ID (FK → MT_APIS)
-  - CREATED_AT
-  - UPDATED_AT
-
-MT_SYNTHETIC_TEST_TAG_MEMBERS
-  - SYNTHETIC_TEST_TAG_ID (PK)
-  - TAG_ID (FK → MT_TAGS)
-  - SYNTHETIC_TEST_ID (FK → MT_SYNTHETIC_TESTS)
-  - CREATED_AT
-  - UPDATED_AT
-```
-
-## 데이터 마이그레이션 (선택사항)
-
-기존에 `MT_APIS.TAGS` 또는 `MT_SYNTHETIC_TESTS.TAGS` 컬럼에 데이터가 있다면 마이그레이션이 필요합니다:
-
-### API 태그 마이그레이션 예시
-```sql
--- 콤마로 구분된 태그 문자열을 개별 관계로 변환
-DECLARE
-  CURSOR api_cursor IS
-    SELECT API_ID, TAGS FROM MT_APIS WHERE TAGS IS NOT NULL;
-  v_tag_name VARCHAR2(200);
-  v_tag_id NUMBER;
-  v_pos NUMBER;
-  v_tags VARCHAR2(500);
 BEGIN
-  FOR api_rec IN api_cursor LOOP
-    v_tags := api_rec.TAGS || ',';
-    
-    WHILE INSTR(v_tags, ',') > 0 LOOP
-      v_pos := INSTR(v_tags, ',');
-      v_tag_name := TRIM(SUBSTR(v_tags, 1, v_pos - 1));
-      v_tags := SUBSTR(v_tags, v_pos + 1);
-      
-      IF LENGTH(v_tag_name) > 0 THEN
-        -- 태그 확인/생성
-        BEGIN
-          SELECT TAG_ID INTO v_tag_id FROM MT_TAGS WHERE TAG_NAME = v_tag_name;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            INSERT INTO MT_TAGS (TAG_ID, TAG_NAME, CREATED_AT, UPDATED_AT)
-            VALUES (SEQ_MT_TAG_ID.NEXTVAL, v_tag_name, SYSTIMESTAMP, SYSTIMESTAMP)
-            RETURNING TAG_ID INTO v_tag_id;
-        END;
-        
-        -- 관계 생성
-        BEGIN
-          INSERT INTO MT_API_TAG_MEMBERS (API_TAG_ID, TAG_ID, API_ID, CREATED_AT, UPDATED_AT)
-          VALUES (SEQ_MT_API_TAG_ID.NEXTVAL, v_tag_id, api_rec.API_ID, SYSTIMESTAMP, SYSTIMESTAMP);
-        EXCEPTION
-          WHEN DUP_VAL_ON_INDEX THEN
-            NULL; -- 중복 무시
-        END;
-      END IF;
-    END LOOP;
-  END LOOP;
-  
-  COMMIT;
-  DBMS_OUTPUT.PUT_LINE('API tags migration completed');
+  DBMS_OUTPUT.PUT_LINE('===========================================');
+  DBMS_OUTPUT.PUT_LINE('Oracle Database Schema Creation Started');
+  DBMS_OUTPUT.PUT_LINE('===========================================');
 END;
 /
-```
 
-### Synthetic Test 태그 마이그레이션 예시
-```sql
--- 위와 유사한 로직으로 SYNTHETIC_TEST_ID 사용
-DECLARE
-  CURSOR test_cursor IS
-    SELECT SYNTHETIC_TEST_ID, TAGS FROM MT_SYNTHETIC_TESTS WHERE TAGS IS NOT NULL;
-  v_tag_name VARCHAR2(200);
-  v_tag_id NUMBER;
-  v_pos NUMBER;
-  v_tags VARCHAR2(500);
+-- ============================================================================
+-- 1. 기존 테이블 및 시퀀스 삭제 (재생성을 위해)
+-- ============================================================================
+
 BEGIN
-  FOR test_rec IN test_cursor LOOP
-    v_tags := test_rec.TAGS || ',';
-    
-    WHILE INSTR(v_tags, ',') > 0 LOOP
-      v_pos := INSTR(v_tags, ',');
-      v_tag_name := TRIM(SUBSTR(v_tags, 1, v_pos - 1));
-      v_tags := SUBSTR(v_tags, v_pos + 1);
-      
-      IF LENGTH(v_tag_name) > 0 THEN
-        BEGIN
-          SELECT TAG_ID INTO v_tag_id FROM MT_TAGS WHERE TAG_NAME = v_tag_name;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            INSERT INTO MT_TAGS (TAG_ID, TAG_NAME, CREATED_AT, UPDATED_AT)
-            VALUES (SEQ_MT_TAG_ID.NEXTVAL, v_tag_name, SYSTIMESTAMP, SYSTIMESTAMP)
-            RETURNING TAG_ID INTO v_tag_id;
-        END;
-        
-        BEGIN
-          INSERT INTO MT_SYNTHETIC_TEST_TAG_MEMBERS (
-            SYNTHETIC_TEST_TAG_ID, TAG_ID, SYNTHETIC_TEST_ID, CREATED_AT, UPDATED_AT
-          ) VALUES (
-            SEQ_MT_SYNTHETIC_TEST_TAG_ID.NEXTVAL, v_tag_id, test_rec.SYNTHETIC_TEST_ID, 
-            SYSTIMESTAMP, SYSTIMESTAMP
-          );
-        EXCEPTION
-          WHEN DUP_VAL_ON_INDEX THEN
-            NULL;
-        END;
-      END IF;
-    END LOOP;
-  END LOOP;
-  
-  COMMIT;
-  DBMS_OUTPUT.PUT_LINE('Synthetic test tags migration completed');
+  DBMS_OUTPUT.PUT_LINE('');
+  DBMS_OUTPUT.PUT_LINE('Step 1: Dropping existing tables and sequences...');
 END;
 /
-```
 
-## TAGS 컬럼 삭제 (마이그레이션 후)
+-- 외래키 때문에 역순으로 삭제
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_NODE_TAG_MEMBERS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_NODE_TAG_MEMBERS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
 
-데이터 마이그레이션이 완료되면 기존 TAGS 컬럼을 삭제할 수 있습니다:
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_TAGS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_TAGS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
 
-```sql
--- 백업 권장
-CREATE TABLE MT_APIS_BACKUP AS SELECT * FROM MT_APIS;
-CREATE TABLE MT_SYNTHETIC_TESTS_BACKUP AS SELECT * FROM MT_SYNTHETIC_TESTS;
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_SYNTHETIC_TEST_HISTORY CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_SYNTHETIC_TEST_HISTORY');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
 
--- TAGS 컬럼 삭제
-ALTER TABLE MT_APIS DROP COLUMN TAGS;
-ALTER TABLE MT_SYNTHETIC_TESTS DROP COLUMN TAGS;
-```
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_SYNTHETIC_TESTS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_SYNTHETIC_TESTS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
 
-## 확인
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_API_PARAMETERS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_API_PARAMETERS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
 
-테이블과 시퀀스가 정상적으로 생성되었는지 확인:
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_APIS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_APIS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
 
-```sql
--- 테이블 확인
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_NODE_GROUP_MEMBERS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_NODE_GROUP_MEMBERS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_NODE_GROUPS CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_NODE_GROUPS');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE MT_NODES CASCADE CONSTRAINTS';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped table: MT_NODES');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -942 THEN RAISE; END IF;
+END;
+/
+
+-- 시퀀스 삭제
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_NODE_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_NODE_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_NODE_GROUP_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_NODE_GROUP_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_API_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_NODE_GROUP_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_API_PARAMETER_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_API_PARAMETER_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_SYNTHETIC_TEST_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_SYNTHETIC_TEST_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_TEST_HISTORY_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_TEST_HISTORY_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_TAG_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_TAG_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP SEQUENCE SEQ_MT_NODE_TAG_ID';
+  DBMS_OUTPUT.PUT_LINE('  - Dropped sequence: SEQ_MT_NODE_TAG_ID');
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE != -2289 THEN RAISE; END IF;
+END;
+/
+
+-- ============================================================================
+-- 2. 시퀀스 생성 (Auto Increment를 위한 시퀀스)
+-- ============================================================================
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('');
+  DBMS_OUTPUT.PUT_LINE('Step 2: Creating sequences...');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_NODE_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_NODE_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_NODE_GROUP_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_NODE_GROUP_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_API_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_API_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_API_PARAMETER_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_API_PARAMETER_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_SYNTHETIC_TEST_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_SYNTHETIC_TEST_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_TEST_HISTORY_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_TEST_HISTORY_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_TAG_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_TAG_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_NODE_TAG_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_NODE_TAG_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_SYNTHETIC_TAG_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_SYNTHETIC_TAG_ID');
+END;
+/
+
+CREATE SEQUENCE SEQ_MT_API_TAG_ID
+  START WITH 1
+  INCREMENT BY 1
+  MAXVALUE 999999999
+  NOCACHE
+  NOCYCLE;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created sequence: SEQ_MT_API_TAG_ID');
+END;
+/
+
+-- ============================================================================
+-- 3. 테이블 생성
+-- ============================================================================
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('');
+  DBMS_OUTPUT.PUT_LINE('Step 3: Creating tables...');
+END;
+/
+
+/**
+ * MT_NODES 테이블
+ * 
+ * 모니터링할 노드(서버, 서비스, 엔드포인트 등)의 정보를 저장합니다.
+ * 
+ * 컬럼 설명:
+ * - ID: 노드 고유 식별자 (자동 증가)
+ * - NAME: 노드 이름
+ * - HOST: 노드 호스트 주소 (IP 또는 도메인)
+ * - PORT: 노드 포트 번호
+ * - STATUS: 노드 상태 (active, inactive, warning, error)
+ * - TAGS: 노드 태그 (쉼표로 구분, 예: "production,web,critical")
+ * - CREATED_AT: 생성 일시
+ * - UPDATED_AT: 수정 일시
+ */
+CREATE TABLE MT_NODES (
+  ID            NUMBER(10)    NOT NULL,
+  NAME          VARCHAR2(200) NOT NULL,
+  HOST          VARCHAR2(200) NOT NULL,
+  PORT          NUMBER(5)     NOT NULL,
+  STATUS        VARCHAR2(20)  DEFAULT 'active' NOT NULL,
+  TAGS          VARCHAR2(500),
+  CREATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  UPDATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_NODES PRIMARY KEY (ID),
+  CONSTRAINT CHK_MT_NODES_STATUS CHECK (STATUS IN ('active', 'inactive', 'warning', 'error'))
+);
+
+CREATE INDEX IDX_MT_NODES_NAME ON MT_NODES(NAME);
+CREATE INDEX IDX_MT_NODES_STATUS ON MT_NODES(STATUS);
+CREATE INDEX IDX_MT_NODES_HOST_PORT ON MT_NODES(HOST, PORT);
+
+COMMENT ON TABLE MT_NODES IS '노드(서버/서비스) 정보 테이블';
+COMMENT ON COLUMN MT_NODES.ID IS '노드 고유 식별자';
+COMMENT ON COLUMN MT_NODES.NAME IS '노드 이름';
+COMMENT ON COLUMN MT_NODES.HOST IS '노드 호스트 주소';
+COMMENT ON COLUMN MT_NODES.PORT IS '노드 포트 번호';
+COMMENT ON COLUMN MT_NODES.STATUS IS '노드 상태 (active, inactive, warning, error)';
+COMMENT ON COLUMN MT_NODES.TAGS IS '노드 태그 (쉼표 구분)';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_NODES');
+END;
+/
+
+/**
+ * MT_TAGS 테이블
+ * 
+ * 태그 정보를 저장합니다.
+ * 태그는 중복되지 않으며, 여러 노드에서 공유됩니다.
+ * 
+ * 커럼 설명:
+ * - TAG_ID: 태그 고유 식별자
+ * - TAG_NAME: 태그 이름 (중복 불가)
+ * - CREATED_AT: 생성 일시
+ * - UPDATED_AT: 수정 일시
+ */
+CREATE TABLE MT_TAGS (
+  TAG_ID        NUMBER(10)    NOT NULL,
+  TAG_NAME      VARCHAR2(200) NOT NULL,
+  CREATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  UPDATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_TAGS PRIMARY KEY (TAG_ID),
+  CONSTRAINT UK_MT_TAGS_NAME UNIQUE (TAG_NAME)
+);
+
+CREATE INDEX IDX_MT_TAGS_NAME ON MT_TAGS(TAG_NAME);
+COMMENT ON TABLE MT_TAGS IS '태그 정보 테이블';
+COMMENT ON COLUMN MT_TAGS.TAG_ID IS '태그 고유 식별자';
+COMMENT ON COLUMN MT_TAGS.TAG_NAME IS '태그 이름 (중복 불가)';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_TAGS');
+END;
+/
+
+/**
+ * MT_NODE_TAG_MEMBERS 테이블
+ * 
+ * 노드와 태그 간의 다대다 관계를 관리합니다.
+ * 하나의 노드는 여러 태그를 가질 수 있습니다.
+ * 
+ * 커럼 설명:
+ * - NODE_TAG_ID: 노드-태그 관계 고유 식별자
+ * - TAG_ID: 태그 ID (FK)
+ * - NODE_ID: 노드 ID (FK)
+ * - CREATED_AT: 관계 생성 일시
+ * - UPDATED_AT: 관계 수정 일시
+ */
+CREATE TABLE MT_NODE_TAG_MEMBERS (
+  NODE_TAG_ID   NUMBER(10)    NOT NULL,
+  TAG_ID        NUMBER(10)    NOT NULL,
+  NODE_ID       NUMBER(10)    NOT NULL,
+  CREATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  UPDATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_NODE_TAG_MEMBERS PRIMARY KEY (NODE_TAG_ID),
+  CONSTRAINT UK_NODE_TAG_MEMBERS UNIQUE (TAG_ID, NODE_ID),
+  CONSTRAINT FK_NTM_TAG FOREIGN KEY (TAG_ID) REFERENCES MT_TAGS(TAG_ID) ON DELETE CASCADE,
+  CONSTRAINT FK_NTM_NODE FOREIGN KEY (NODE_ID) REFERENCES MT_NODES(ID) ON DELETE CASCADE
+);
+
+CREATE INDEX IDX_NTM_NODE ON MT_NODE_TAG_MEMBERS(NODE_ID);
+CREATE INDEX IDX_NTM_TAG ON MT_NODE_TAG_MEMBERS(TAG_ID);
+COMMENT ON TABLE MT_NODE_TAG_MEMBERS IS '노드-태그 멤버십 테이블 (다대다 관계)';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_NODE_TAG_MEMBERS');
+END;
+/
+
+/**
+ * MT_NODE_GROUPS 테이블
+ * 
+ * 여러 노드를 논리적으로 그룹화합니다.
+ * 
+ * 컬럼 설명:
+ * - ID: 그룹 고유 식별자
+ * - NAME: 그룹 이름
+ * - DESCRIPTION: 그룹 설명
+ * - CREATED_AT: 생성 일시
+ * - UPDATED_AT: 수정 일시
+ */
+CREATE TABLE MT_NODE_GROUPS (
+  ID            NUMBER(10)    NOT NULL,
+  NAME          VARCHAR2(200) NOT NULL,
+  DESCRIPTION   VARCHAR2(1000),
+  CREATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  UPDATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_NODE_GROUPS PRIMARY KEY (ID)
+);
+
+CREATE INDEX IDX_MT_NODE_GROUPS_NAME ON MT_NODE_GROUPS(NAME);
+COMMENT ON TABLE MT_NODE_GROUPS IS '노드 그룹 정보 테이블';
+COMMENT ON COLUMN MT_NODE_GROUPS.ID IS '그룹 고유 식별자';
+COMMENT ON COLUMN MT_NODE_GROUPS.NAME IS '그룹 이름';
+COMMENT ON COLUMN MT_NODE_GROUPS.DESCRIPTION IS '그룹 설명';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_NODE_GROUPS');
+END;
+/
+
+/**
+ * MT_NODE_GROUP_MEMBERS 테이블
+ * 
+ * 노드 그룹과 노드 간의 다대다 관계를 관리합니다.
+ * 하나의 노드는 여러 그룹에 속할 수 있습니다.
+ * 
+ * 컬럼 설명:
+ * - GROUP_ID: 노드 그룹 ID (FK)
+ * - NODE_ID: 노드 ID (FK)
+ * - CREATED_AT: 그룹 멤버 추가 일시
+ */
+CREATE TABLE MT_NODE_GROUP_MEMBERS (
+  GROUP_ID      NUMBER(10)  NOT NULL,
+  NODE_ID       NUMBER(10)  NOT NULL,
+  CREATED_AT    TIMESTAMP   DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_NODE_GROUP_MEMBERS PRIMARY KEY (GROUP_ID, NODE_ID),
+  CONSTRAINT FK_NGM_GROUP FOREIGN KEY (GROUP_ID) REFERENCES MT_NODE_GROUPS(ID) ON DELETE CASCADE,
+  CONSTRAINT FK_NGM_NODE FOREIGN KEY (NODE_ID) REFERENCES MT_NODES(ID) ON DELETE CASCADE
+);
+
+CREATE INDEX IDX_NGM_NODE ON MT_NODE_GROUP_MEMBERS(NODE_ID);
+COMMENT ON TABLE MT_NODE_GROUP_MEMBERS IS '노드 그룹 멤버십 테이블 (다대다 관계)';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_NODE_GROUP_MEMBERS');
+END;
+/
+
+/**
+ * MT_APIS 테이블
+ * 
+ * 노드에 대해 실행할 수 있는 HTTP API를 정의합니다.
+ * 
+ * 컬럼 설명:
+ * - ID: API 고유 식별자
+ * - NAME: API 이름
+ * - URI: API URI 경로 (예: "/api/users")
+ * - METHOD: HTTP 메서드 (GET, POST, PUT, DELETE)
+ * - CREATED_AT: 생성 일시
+ * - UPDATED_AT: 수정 일시
+ */
+CREATE TABLE MT_APIS (
+  ID            NUMBER(10)    NOT NULL,
+  NAME          VARCHAR2(200) NOT NULL,
+  URI           VARCHAR2(500) NOT NULL,
+  METHOD        VARCHAR2(10)  NOT NULL,
+  CREATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  UPDATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_APIS PRIMARY KEY (ID),
+  CONSTRAINT CHK_MT_APIS_METHOD CHECK (METHOD IN ('GET', 'POST', 'PUT', 'DELETE'))
+);
+
+CREATE INDEX IDX_MT_APIS_NAME ON MT_APIS(NAME);
+CREATE INDEX IDX_MT_APIS_METHOD ON MT_APIS(METHOD);
+
+COMMENT ON TABLE MT_APIS IS 'API 정의 테이블';
+COMMENT ON COLUMN MT_APIS.ID IS 'API 고유 식별자';
+COMMENT ON COLUMN MT_APIS.NAME IS 'API 이름';
+COMMENT ON COLUMN MT_APIS.URI IS 'API URI 경로';
+COMMENT ON COLUMN MT_APIS.METHOD IS 'HTTP 메서드';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_APIS');
+END;
+/
+
+/**
+ * MT_API_PARAMETERS 테이블
+ * 
+ * API 요청 시 필요한 파라미터를 정의합니다.
+ * 
+ * 컬럼 설명:
+ * - ID: 파라미터 고유 식별자
+ * - API_ID: 소속된 API ID (FK)
+ * - NAME: 파라미터 이름 (예: "userId")
+ * - TYPE: 파라미터 타입 (query, body)
+ * - REQUIRED: 필수 여부 (Y/N)
+ * - DESCRIPTION: 파라미터 설명
+ * - CREATED_AT: 생성 일시
+ */
+CREATE TABLE MT_API_PARAMETERS (
+  ID            NUMBER(10)    NOT NULL,
+  API_ID        NUMBER(10)    NOT NULL,
+  NAME          VARCHAR2(100) NOT NULL,
+  TYPE          VARCHAR2(20)  NOT NULL,
+  REQUIRED      CHAR(1)       DEFAULT 'N' NOT NULL,
+  DESCRIPTION   VARCHAR2(500),
+  CREATED_AT    TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_API_PARAMETERS PRIMARY KEY (ID),
+  CONSTRAINT FK_APARAM_API FOREIGN KEY (API_ID) REFERENCES MT_APIS(ID) ON DELETE CASCADE,
+  CONSTRAINT CHK_APARAM_TYPE CHECK (TYPE IN ('query', 'body')),
+  CONSTRAINT CHK_APARAM_REQUIRED CHECK (REQUIRED IN ('Y', 'N'))
+);
+
+CREATE INDEX IDX_APARAM_API ON MT_API_PARAMETERS(API_ID);
+COMMENT ON TABLE MT_API_PARAMETERS IS 'API 파라미터 정의 테이블';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_API_PARAMETERS');
+END;
+/
+
+/**
+ * MT_SYNTHETIC_TESTS 테이블
+ * 
+ * 주기적으로 자동 실행되는 합성 테스트를 정의합니다.
+ * 노드 또는 노드 그룹에 대해 API를 주기적으로 실행하여 상태를 모니터링합니다.
+ * 
+ * 컬럼 설명:
+ * - ID: 테스트 고유 식별자
+ * - NAME: 테스트 이름
+ * - TARGET_TYPE: 대상 타입 (node, group)
+ * - TARGET_ID: 대상 ID (MT_NODES.ID 또는 MT_NODE_GROUPS.ID)
+ * - API_ID: 실행할 API ID (FK)
+ * - INTERVAL_SECONDS: 실행 주기 (초)
+ * - ALERT_THRESHOLD_MS: 알림 임계값 (밀리초)
+ * - TAGS: 테스트 태그 (쉼표로 구분, 예: "production,critical")
+ * - ENABLED: 활성화 여부 (Y/N)
+ * - CREATED_AT: 생성 일시
+ * - UPDATED_AT: 수정 일시
+ */
+CREATE TABLE MT_SYNTHETIC_TESTS (
+  ID                    NUMBER(10)    NOT NULL,
+  NAME                  VARCHAR2(200) NOT NULL,
+  TARGET_TYPE           VARCHAR2(10)  NOT NULL,
+  TARGET_ID             NUMBER(10)    NOT NULL,
+  API_ID                NUMBER(10)    NOT NULL,
+  INTERVAL_SECONDS      NUMBER(10)    NOT NULL,
+  ALERT_THRESHOLD_MS    NUMBER(10)    NOT NULL,
+  TAGS                  VARCHAR2(500),
+  ENABLED               CHAR(1)       DEFAULT 'Y' NOT NULL,
+  CREATED_AT            TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  UPDATED_AT            TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
+  CONSTRAINT PK_MT_SYNTHETIC_TESTS PRIMARY KEY (ID),
+  CONSTRAINT FK_STEST_API FOREIGN KEY (API_ID) REFERENCES MT_APIS(ID) ON DELETE CASCADE,
+  CONSTRAINT CHK_STEST_TARGET_TYPE CHECK (TARGET_TYPE IN ('node', 'group')),
+  CONSTRAINT CHK_STEST_ENABLED CHECK (ENABLED IN ('Y', 'N'))
+);
+
+CREATE INDEX IDX_STEST_TARGET ON MT_SYNTHETIC_TESTS(TARGET_TYPE, TARGET_ID);
+CREATE INDEX IDX_STEST_API ON MT_SYNTHETIC_TESTS(API_ID);
+CREATE INDEX IDX_STEST_ENABLED ON MT_SYNTHETIC_TESTS(ENABLED);
+COMMENT ON TABLE MT_SYNTHETIC_TESTS IS '합성 테스트 정의 테이블';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_SYNTHETIC_TESTS');
+END;
+/
+
+/**
+ * MT_SYNTHETIC_TEST_HISTORY 테이블
+ * 
+ * 합성 테스트 실행 이력을 저장합니다.
+ * 시간에 따른 노드 상태 변화를 추적할 수 있습니다.
+ * 
+ * 컬럼 설명:
+ * - ID: 이력 고유 식별자
+ * - TEST_ID: 합성 테스트 ID (FK)
+ * - NODE_ID: 실행된 노드 ID (FK)
+ * - STATUS_CODE: HTTP 응답 상태 코드
+ * - SUCCESS: 성공 여부 (Y/N)
+ * - RESPONSE_TIME_MS: 응답 시간 (밀리초)
+ * - EXECUTED_AT: 실행 일시
+ * - INPUT: 입력 데이터 (JSON 문자열)
+ * - OUTPUT: 출력 데이터 (JSON 문자열)
+ * - ERROR_MESSAGE: 에러 메시지 (실패 시)
+ */
+CREATE TABLE MT_SYNTHETIC_TEST_HISTORY (
+  ID                NUMBER(10)      NOT NULL,
+  TEST_ID           NUMBER(10)      NOT NULL,
+  NODE_ID           NUMBER(10)      NOT NULL,
+  STATUS_CODE       NUMBER(3)       NOT NULL,
+  SUCCESS           CHAR(1)         NOT NULL,
+  RESPONSE_TIME_MS  NUMBER(10)      NOT NULL,
+  EXECUTED_AT       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+  INPUT             VARCHAR2(4000),
+  OUTPUT            VARCHAR2(4000),
+  ERROR_MESSAGE     VARCHAR2(1000),
+  CONSTRAINT PK_TEST_HISTORY PRIMARY KEY (ID),
+  CONSTRAINT FK_THIST_TEST FOREIGN KEY (TEST_ID) REFERENCES MT_SYNTHETIC_TESTS(ID) ON DELETE CASCADE,
+  CONSTRAINT FK_THIST_NODE FOREIGN KEY (NODE_ID) REFERENCES MT_NODES(ID) ON DELETE CASCADE,
+  CONSTRAINT CHK_THIST_SUCCESS CHECK (SUCCESS IN ('Y', 'N'))
+);
+
+-- 테스트별 이력 조회 성능 향상
+CREATE INDEX IDX_THIST_TEST ON MT_SYNTHETIC_TEST_HISTORY(TEST_ID, EXECUTED_AT DESC);
+
+-- 노드별 이력 조회 성능 향상
+CREATE INDEX IDX_THIST_NODE ON MT_SYNTHETIC_TEST_HISTORY(NODE_ID, EXECUTED_AT DESC);
+
+-- 실행 일시 기준 정렬 성능 향상
+CREATE INDEX IDX_THIST_EXECUTED ON MT_SYNTHETIC_TEST_HISTORY(EXECUTED_AT DESC);
+
+COMMENT ON TABLE MT_SYNTHETIC_TEST_HISTORY IS '합성 테스트 실행 이력 테이블';
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('  - Created table: MT_SYNTHETIC_TEST_HISTORY');
+END;
+/
+
+-- ============================================================================
+-- 완료 메시지
+-- ============================================================================
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('');
+  DBMS_OUTPUT.PUT_LINE('===========================================');
+  DBMS_OUTPUT.PUT_LINE('Schema creation completed successfully!');
+  DBMS_OUTPUT.PUT_LINE('===========================================');
+  DBMS_OUTPUT.PUT_LINE('');
+  DBMS_OUTPUT.PUT_LINE('Next steps:');
+  DBMS_OUTPUT.PUT_LINE('  1. Run insert_sample_data_oracle.sql for test data');
+  DBMS_OUTPUT.PUT_LINE('  2. Configure .env.local with Oracle connection info');
+  DBMS_OUTPUT.PUT_LINE('  3. Start application: npm run dev');
+  DBMS_OUTPUT.PUT_LINE('');
+END;
+/
+
+-- 생성된 테이블 확인
+SELECT 'Created Tables:' AS INFO FROM DUAL;
 SELECT table_name FROM user_tables 
 WHERE table_name IN (
-  'MT_API_TAG_MEMBERS',
-  'MT_SYNTHETIC_TEST_TAG_MEMBERS'
+  'MT_NODES', 
+  'MT_TAGS',
+  'MT_NODE_TAG_MEMBERS',
+  'MT_NODE_GROUPS', 
+  'MT_NODE_GROUP_MEMBERS', 
+  'MT_APIS', 
+  'MT_API_PARAMETERS', 
+  'MT_SYNTHETIC_TESTS', 
+  'MT_SYNTHETIC_TEST_HISTORY'
 )
 ORDER BY table_name;
 
--- 시퀀스 확인
+-- 생성된 시퀀스 확인
+SELECT 'Created Sequences:' AS INFO FROM DUAL;
 SELECT sequence_name FROM user_sequences 
-WHERE sequence_name IN (
-  'SEQ_MT_API_TAG_ID',
-  'SEQ_MT_SYNTHETIC_TEST_TAG_ID'
-)
+WHERE sequence_name LIKE 'SEQ_%'
 ORDER BY sequence_name;
-
--- 데이터 확인 (마이그레이션 후)
-SELECT 'API Tags' AS TYPE, COUNT(*) AS COUNT FROM MT_API_TAG_MEMBERS
-UNION ALL
-SELECT 'Test Tags' AS TYPE, COUNT(*) AS COUNT FROM MT_SYNTHETIC_TEST_TAG_MEMBERS;
-```
-
-## 애플리케이션 코드
-
-테이블 생성 후에는 애플리케이션 코드를 업데이트하여 새로운 멤버십 테이블을 사용하도록 해야 합니다. 코드는 노드 태그 처리와 동일한 방식으로 작동합니다.
-
-## 주의사항
-
-1. **백업**: 프로덕션 환경에서는 반드시 데이터를 백업한 후 실행
-2. **외래 키**: SYNTHETIC_TEST_ID 컬럼명이 실제 테이블과 일치하는지 확인 필요
-3. **마이그레이션**: 기존 TAGS 데이터가 있다면 반드시 마이그레이션 후 컬럼 삭제
-4. **테스트**: 개발 환경에서 먼저 테스트 후 프로덕션 적용
-
-## 문제 해결
-
-### FK 제약 조건 에러
-```sql
--- MT_SYNTHETIC_TESTS의 실제 PK 컬럼명 확인
-SELECT column_name FROM user_cons_columns
-WHERE constraint_name = (
-  SELECT constraint_name FROM user_constraints
-  WHERE table_name = 'MT_SYNTHETIC_TESTS' AND constraint_type = 'P'
-);
-```
-
-컬럼명이 `ID`라면 스크립트의 `SYNTHETIC_TEST_ID`를 `ID`로 변경해야 합니다.

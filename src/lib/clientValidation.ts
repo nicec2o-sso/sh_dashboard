@@ -64,7 +64,7 @@ export function validateNodeData(data: {
     }
     // 빈 태그 검증
     const tagArray = data.tags.split(',').map(t => t.trimStart().trimEnd());
-    if (tagArray.some(t => t.length === 0)) {
+    if (tagArray[0] !== '' && tagArray.some(t => t.length === 0)) {
       return '태그에 빈 값이 포함되어 있습니다.';
     }
   }
@@ -161,7 +161,7 @@ export function validateApiData(data: {
     }
     // 빈 태그 검증
     const tagArray = data.tags.split(',').map(t => t.trimStart().trimEnd());
-    if (tagArray.some(t => t.length === 0)) {
+    if (tagArray[0] !== '' && tagArray.some(t => t.length === 0)) {
       return '태그에 빈 값이 포함되어 있습니다.';
     }
   }
@@ -300,11 +300,10 @@ export function validateSyntheticTestData(data: {
     if (data.tags.length > 500) {
       return '태그는 500자 이하여야 합니다.';
     }
-    // 빈 태그 허용
-    // const tagArray = data.tags.split(',').map(t => t.trimStart().trimEnd());
-    // if (tagArray.some(t => t.length === 0)) {
-    //   return '태그에 빈 값이 포함되어 있습니다.';
-    // }
+    const tagArray = data.tags.split(',').map(t => t.trimStart().trimEnd());
+    if (tagArray[0] !== '' && tagArray.some(t => t.length === 0)) {
+      return '태그에 빈 값이 포함되어 있습니다.';
+    }
   }
 
   return null;

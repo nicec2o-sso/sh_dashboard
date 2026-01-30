@@ -13,17 +13,17 @@ import oracledb from 'oracledb';
  */
 export const SELECT_NODE_GROUPS = `
   SELECT 
-    ng.NODE_GROUP_ID AS "nodeGroupId",
-    ng.NODE_GROUP_NAME AS "nodeGroupName",
-    ng.NODE_GROUP_DESC AS "nodeGroupDesc",
-    ng.CREATED_AT AS "createdAt",
-    ng.UPDATED_AT AS "updatedAt",
-    COUNT(ngm.NODE_ID) AS "nodeCount",
-    LISTAGG(ngm.NODE_ID, ',') WITHIN GROUP (ORDER BY ngm.NODE_ID) AS "nodeIdsStr"
-  FROM MT_NODE_GROUPS ng
-  LEFT JOIN MT_NODE_GROUP_MEMBERS ngm ON ng.NODE_GROUP_ID = ngm.NODE_GROUP_ID
-  GROUP BY ng.NODE_GROUP_ID, ng.NODE_GROUP_NAME, ng.NODE_GROUP_DESC, ng.CREATED_AT, ng.UPDATED_AT
-  ORDER BY ng.CREATED_AT DESC
+    ng.MNG_DOM_NODE_GRP_ID AS "nodeGroupId",
+    ng.SNET_MNG_NODE_GRP_NM AS "nodeGroupName",
+    ng.MNG_DOM_NODE_GRP_DES_CNTT AS "nodeGroupDesc",
+    ng.REG_DDTS AS "createdAt",
+    ng.CHG_DDTS AS "updatedAt",
+    COUNT(ngm.MNG_DOM_NODE_ID) AS "nodeCount",
+    LISTAGG(ngm.MNG_DOM_NODE_ID, ',') WITHIN GROUP (ORDER BY ngm.MNG_DOM_NODE_ID) AS "nodeIdsStr"
+  FROM TWAA0004M00 ng
+  LEFT JOIN TWAA0005M00 ngm ON ng.MNG_DOM_NODE_GRP_ID = ngm.MNG_DOM_NODE_GRP_ID
+  GROUP BY ng.MNG_DOM_NODE_GRP_ID, ng.SNET_MNG_NODE_GRP_NM, ng.MNG_DOM_NODE_GRP_DES_CNTT, ng.REG_DDTS, ng.CHG_DDTS
+  ORDER BY ng.REG_DDTS DESC
 `;
 
 /**
@@ -35,22 +35,21 @@ export const SELECT_NODE_GROUPS = `
  */
 export const SELECT_NODE_GROUP_DETAIL = `
   SELECT 
-    ng.NODE_GROUP_ID AS "nodeGroupId",
-    ng.NODE_GROUP_NAME AS "nodeGroupName",
-    ng.NODE_GROUP_DESC AS "nodeGroupDesc",
-    ng.CREATED_AT AS "createdAt",
-    ng.UPDATED_AT AS "updatedAt",
-    n.NODE_ID AS "nodeId",
-    n.NODE_NAME AS "nodeName",
-    n.HOST AS "host",
-    n.PORT AS "port",
-    n.NODE_STATUS AS "nodeStatus",
-    n.NODE_DESC AS "nodeDesc"
-  FROM MT_NODE_GROUPS ng
-  LEFT JOIN MT_NODE_GROUP_MEMBERS ngm ON ng.NODE_GROUP_ID = ngm.NODE_GROUP_ID
-  LEFT JOIN MT_NODES n ON ngm.NODE_ID = n.NODE_ID
-  WHERE ng.NODE_GROUP_ID = :nodeGroupId
-  ORDER BY n.NODE_NAME
+    ng.MNG_DOM_NODE_GRP_ID AS "nodeGroupId",
+    ng.SNET_MNG_NODE_GRP_NM AS "nodeGroupName",
+    ng.MNG_DOM_NODE_GRP_DES_CNTT AS "nodeGroupDesc",
+    ng.REG_DDTS AS "createdAt",
+    ng.CHG_DDTS AS "updatedAt",
+    n.MNG_DOM_NODE_ID AS "nodeId",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    n.MNG_DOM_NODE_HST_IP AS "host",
+    n.MNG_DOM_NODE_HST_PORT_NO AS "port",
+    n.MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus"
+  FROM TWAA0004M00 ng
+  LEFT JOIN TWAA0005M00 ngm ON ng.MNG_DOM_NODE_GRP_ID = ngm.MNG_DOM_NODE_GRP_ID
+  LEFT JOIN TWAA0001M00 n ON ngm.MNG_DOM_NODE_ID = n.MNG_DOM_NODE_ID
+  WHERE ng.MNG_DOM_NODE_GRP_ID = :nodeGroupId
+  ORDER BY n.MNG_DOM_NODE_NM
 `;
 
 /**
@@ -65,20 +64,28 @@ export const SELECT_NODE_GROUP_DETAIL = `
  * - :id (NUMBER): 생성된 그룹 ID
  */
 export const INSERT_NODE_GROUP = `
-  INSERT INTO MT_NODE_GROUPS (
-    NODE_GROUP_ID,
-    NODE_GROUP_NAME,
-    NODE_GROUP_DESC,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0004M00 (
+    MNG_DOM_NODE_GRP_ID,
+    SNET_MNG_NODE_GRP_NM,
+    MNG_DOM_NODE_GRP_DES_CNTT,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_NODE_GROUP_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_NODE_GRP_ID),0)+1 FROM TWAA0004M00),
     :nodeGroupName,
     :nodeGroupDesc,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING NODE_GROUP_ID INTO :id
+  RETURNING MNG_DOM_NODE_GRP_ID INTO :id
 `;
 
 /**
@@ -101,13 +108,13 @@ export const INSERT_NODE_GROUP_BINDS = {
  * - :updatedId (NUMBER): 수정된 그룹 ID
  */
 export const UPDATE_NODE_GROUP = `
-  UPDATE MT_NODE_GROUPS
+  UPDATE TWAA0004M00
   SET 
-    NODE_GROUP_NAME = :nodeGroupName,
-    NODE_GROUP_DESC = :nodeGroupDesc,
-    UPDATED_AT = SYSTIMESTAMP
-  WHERE NODE_GROUP_ID = :nodeGroupId
-  RETURNING NODE_GROUP_ID INTO :id
+    SNET_MNG_NODE_GRP_NM = :nodeGroupName,
+    MNG_DOM_NODE_GRP_DES_CNTT = :nodeGroupDesc,
+    CHG_DDTS = SYSTIMESTAMP
+  WHERE MNG_DOM_NODE_GRP_ID = :nodeGroupId
+  RETURNING MNG_DOM_NODE_GRP_ID INTO :id
 `;
 
 /**
@@ -125,8 +132,8 @@ export const UPDATE_NODE_GROUP_BINDS = {
  * - :id (NUMBER): 삭제할 그룹 ID
  */
 export const DELETE_NODE_GROUP = `
-  DELETE FROM MT_NODE_GROUPS
-  WHERE NODE_GROUP_ID = :nodeGroupId
+  DELETE FROM TWAA0004M00
+  WHERE MNG_DOM_NODE_GRP_ID = :nodeGroupId
 `;
 
 /**
@@ -137,14 +144,25 @@ export const DELETE_NODE_GROUP = `
  * - :nodeId (NUMBER): 추가할 노드 ID
  */
 export const INSERT_NODE_GROUP_MEMBER = `
-  INSERT INTO MT_NODE_GROUP_MEMBERS (
-    NODE_GROUP_ID,
-    NODE_ID,
-    CREATED_AT
+  INSERT INTO TWAA0005M00 (
+    MNG_DOM_NODE_GRP_MMB_MPG_ID,
+    MNG_DOM_NODE_GRP_ID,
+    MNG_DOM_NODE_ID,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
     :nodeGroupId,
     :nodeId,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
 `;
 
@@ -156,8 +174,8 @@ export const INSERT_NODE_GROUP_MEMBER = `
  * - :nodeId (NUMBER): 제거할 노드 ID
  */
 export const DELETE_NODE_GROUP_MEMBER = `
-  DELETE FROM MT_NODE_GROUP_MEMBERS
-  WHERE NODE_GROUP_ID = :nodeGroupId AND NODE_ID = :nodeId
+  DELETE FROM TWAA0005M00
+  WHERE MNG_DOM_NODE_GRP_ID = :nodeGroupId AND MNG_DOM_NODE_ID = :nodeId
 `;
 
 /**
@@ -168,8 +186,8 @@ export const DELETE_NODE_GROUP_MEMBER = `
  * - :nodeGroupId (NUMBER): 노드 그룹 ID
  */
 export const DELETE_ALL_NODE_GROUP_MEMBERS = `
-  DELETE FROM MT_NODE_GROUP_MEMBERS
-  WHERE NODE_GROUP_ID = :nodeGroupId
+  DELETE FROM TWAA0005M00
+  WHERE MNG_DOM_NODE_GRP_ID = :nodeGroupId
 `;
 
 /**
@@ -181,19 +199,18 @@ export const DELETE_ALL_NODE_GROUP_MEMBERS = `
  */
 export const SELECT_AVAILABLE_NODES = `
   SELECT 
-    NODE_ID,
-    NODE_NAME,
-    HOST,
-    PORT,
-    NODE_STATUS,
-    NODE_DESC
-  FROM MT_NODES
-  WHERE NODE_ID NOT IN (
-    SELECT NODE_ID 
-    FROM MT_NODE_GROUP_MEMBERS 
-    WHERE NODE_GROUP_ID = :nodeGroupId
+    MNG_DOM_NODE_ID,
+    MNG_DOM_NODE_NM,
+    MNG_DOM_NODE_HST_IP,
+    MNG_DOM_NODE_HST_PORT_NO,
+    MNG_DOM_NODE_STAT_TYP_CODE
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_ID NOT IN (
+    SELECT MNG_DOM_NODE_ID 
+    FROM TWAA0005M00 
+    WHERE MNG_DOM_NODE_GRP_ID = :nodeGroupId
   )
-  ORDER BY NODE_NAME
+  ORDER BY MNG_DOM_NODE_NM
 `;
 
 /**
@@ -205,9 +222,9 @@ export const SELECT_AVAILABLE_NODES = `
  */
 export const CHECK_NODE_GROUP_NAME_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_NODE_GROUPS
-  WHERE NODE_GROUP_NAME = :nodeGroupName
-  AND (:excludeId IS NULL OR NODE_GROUP_ID != :excludeId)
+  FROM TWAA0004M00
+  WHERE SNET_MNG_NODE_GRP_NM = :nodeGroupName
+  AND (:excludeId IS NULL OR MNG_DOM_NODE_GRP_ID != :excludeId)
 `;
 
 /**
@@ -216,9 +233,9 @@ export const CHECK_NODE_GROUP_NAME_EXISTS = `
 export const CHECK_NODE_GROUP_USED_IN_SYNTHETIC_TESTS = `
   SELECT 
     COUNT(*) AS COUNT,
-    LISTAGG(SYNTHETIC_TEST_NAME, ', ') WITHIN GROUP (ORDER BY SYNTHETIC_TEST_NAME) AS "testNames"
-  FROM MT_SYNTHETIC_TESTS
-  WHERE TARGET_TYPE = 'group'
-    AND TARGET_ID = :nodeGroupId
-  GROUP BY TARGET_TYPE, TARGET_ID
+    LISTAGG(MNG_DOM_SYNT_TEST_NM, ', ') WITHIN GROUP (ORDER BY MNG_DOM_SYNT_TEST_NM) AS "testNames"
+  FROM TWAA0009M00
+  WHERE MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'group'
+    AND SYNT_TEST_MNG_DOM_EXE_TRG_ID = :nodeGroupId
+  GROUP BY MNG_DOM_SYNT_TEST_TRGT_TYP_NM, SYNT_TEST_MNG_DOM_EXE_TRG_ID
 `;

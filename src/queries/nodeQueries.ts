@@ -11,20 +11,20 @@ import oracledb from 'oracledb';
  */
 export const SELECT_ALL_NODES_WITH_TAGS = `
   SELECT 
-    n.NODE_ID AS "nodeId",
-    n.NODE_NAME AS "nodeName",
-    n.HOST AS "host",
-    n.PORT AS "port",
-    n.NODE_STATUS AS "nodeStatus",
-    n.NODE_DESC AS "nodeDesc",
-    n.CREATED_AT AS "createdAt",
-    n.UPDATED_AT AS "updatedAt",
-    LISTAGG(t.TAG_NAME, ',') WITHIN GROUP (ORDER BY t.TAG_NAME) AS "tags"
-  FROM MT_NODES n
-  LEFT JOIN MT_NODE_TAG_MEMBERS ntm ON n.NODE_ID = ntm.NODE_ID
-  LEFT JOIN MT_TAGS t ON ntm.TAG_ID = t.TAG_ID
-  GROUP BY n.NODE_ID, n.NODE_NAME, n.HOST, n.PORT, n.NODE_STATUS, n.NODE_DESC, n.CREATED_AT, n.UPDATED_AT
-  ORDER BY n.CREATED_AT DESC
+    n.MNG_DOM_NODE_ID AS "nodeId",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    n.MNG_DOM_NODE_HST_IP AS "host",
+    n.MNG_DOM_NODE_HST_PORT_NO AS "port",
+    n.MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+   -- n.NODE_DESC AS "nodeDesc",
+    n.REG_DDTS AS "createdAt",
+    n.CHG_DDTS AS "updatedAt",
+    LISTAGG(t.MNG_DOM_TAG_NM, ',') WITHIN GROUP (ORDER BY t.MNG_DOM_TAG_NM) AS "tags"
+  FROM TWAA0001M00 n
+  LEFT JOIN TWAA0002M00 ntm ON n.MNG_DOM_NODE_ID = ntm.MPG_MNG_DOM_NODE_ID
+  LEFT JOIN TWAA0003M00 t ON ntm.MPG_MNG_DOM_TAG_ID = t.MNG_DOM_TAG_ID
+  GROUP BY n.MNG_DOM_NODE_ID, n.MNG_DOM_NODE_NM, n.MNG_DOM_NODE_HST_IP, n.MNG_DOM_NODE_HST_PORT_NO, n.MNG_DOM_NODE_STAT_TYP_CODE, n.REG_DDTS, n.CHG_DDTS
+  ORDER BY n.REG_DDTS DESC
 `;
 
 /**
@@ -32,16 +32,16 @@ export const SELECT_ALL_NODES_WITH_TAGS = `
  */
 export const SELECT_ALL_NODES = `
   SELECT 
-    NODE_ID AS "nodeId",
-    NODE_NAME AS "nodeName",
-    HOST AS "host",
-    PORT AS "port",
-    NODE_STATUS AS "nodeStatus",
-    NODE_DESC AS "nodeDesc",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_NODES
-  ORDER BY CREATED_AT DESC
+    MNG_DOM_NODE_ID AS "nodeId",
+    MNG_DOM_NODE_NM AS "nodeName",
+    MNG_DOM_NODE_HST_IP AS "host",
+    MNG_DOM_NODE_HST_PORT_NO AS "port",
+    MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  NODE_DESC AS "nodeDesc",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0001M00
+  ORDER BY REG_DDTS DESC
 `;
 
 /**
@@ -49,20 +49,20 @@ export const SELECT_ALL_NODES = `
  */
 export const SELECT_NODE_BY_ID_WITH_TAGS = `
   SELECT 
-    n.NODE_ID AS "nodeId",
-    n.NODE_NAME AS "nodeName",
-    n.HOST AS "host",
-    n.PORT AS "port",
-    n.NODE_STATUS AS "nodeStatus",
-    n.NODE_DESC AS "nodeDesc",
-    n.CREATED_AT AS "createdAt",
-    n.UPDATED_AT AS "updatedAt",
-    LISTAGG(t.TAG_NAME, ',') WITHIN GROUP (ORDER BY t.TAG_NAME) AS "tags"
-  FROM MT_NODES n
-  LEFT JOIN MT_NODE_TAG_MEMBERS ntm ON n.NODE_ID = ntm.NODE_ID
-  LEFT JOIN MT_TAGS t ON ntm.TAG_ID = t.TAG_ID
-  WHERE n.NODE_ID = :nodeId
-  GROUP BY n.NODE_ID, n.NODE_NAME, n.HOST, n.PORT, n.NODE_STATUS, n.NODE_DESC, n.CREATED_AT, n.UPDATED_AT
+    n.MNG_DOM_NODE_ID AS "nodeId",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    n.MNG_DOM_NODE_HST_IP AS "host",
+    n.MNG_DOM_NODE_HST_PORT_NO AS "port",
+    n.MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  n.NODE_DESC AS "nodeDesc",
+    n.REG_DDTS AS "createdAt",
+    n.CHG_DDTS AS "updatedAt",
+    LISTAGG(t.MNG_DOM_TAG_NM, ',') WITHIN GROUP (ORDER BY t.MNG_DOM_TAG_NM) AS "tags"
+  FROM TWAA0001M00 n
+  LEFT JOIN TWAA0002M00 ntm ON n.MNG_DOM_NODE_ID = ntm.MPG_MNG_DOM_NODE_ID
+  LEFT JOIN TWAA0003M00 t ON ntm.MPG_MNG_DOM_TAG_ID = t.MNG_DOM_TAG_ID
+  WHERE n.MNG_DOM_NODE_ID = :nodeId
+  GROUP BY n.MNG_DOM_NODE_ID, n.MNG_DOM_NODE_NM, n.MNG_DOM_NODE_HST_IP, n.MNG_DOM_NODE_HST_PORT_NO, n.MNG_DOM_NODE_STAT_TYP_CODE, n.REG_DDTS, n.CHG_DDTS
 `;
 
 /**
@@ -73,16 +73,16 @@ export const SELECT_NODE_BY_ID_WITH_TAGS = `
  */
 export const SELECT_NODE_BY_ID = `
   SELECT 
-    NODE_ID AS "nodeId",
-    NODE_NAME AS "nodeName",
-    HOST AS "host",
-    PORT AS "port",
-    NODE_STATUS AS "nodeStatus",
-    NODE_DESC AS "nodeDesc",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_NODES
-  WHERE NODE_ID = :nodeId
+    MNG_DOM_NODE_ID AS "nodeId",
+    MNG_DOM_NODE_NM AS "nodeName",
+    MNG_DOM_NODE_HST_IP AS "host",
+    MNG_DOM_NODE_HST_PORT_NO AS "port",
+    MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  NODE_DESC AS "nodeDesc",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_ID = :nodeId
 `;
 
 /**
@@ -93,16 +93,16 @@ export const SELECT_NODE_BY_ID = `
  */
 export const SELECT_NODES_BY_IDS = `
   SELECT 
-    NODE_ID AS "nodeId",
-    NODE_NAME AS "nodeName",
-    HOST AS "host",
-    PORT AS "port",
-    NODE_STATUS AS "nodeStatus",
-    NODE_DESC AS "nodeDesc",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_NODES
-  WHERE NODE_ID IN (:nodeIds)
+    MNG_DOM_NODE_ID AS "nodeId",
+    MNG_DOM_NODE_NM AS "nodeName",
+    MNG_DOM_NODE_HST_IP AS "host",
+    MNG_DOM_NODE_HST_PORT_NO AS "port",
+    MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  NODE_DESC AS "nodeDesc",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_ID IN (:nodeIds)
 `;
 
 /**
@@ -110,21 +110,21 @@ export const SELECT_NODES_BY_IDS = `
  */
 export const SELECT_NODES_BY_STATUS_WITH_TAGS = `
   SELECT 
-    n.NODE_ID AS "nodeId",
-    n.NODE_NAME AS "nodeName",
-    n.HOST AS "host",
-    n.PORT AS "port",
-    n.NODE_STATUS AS "nodeStatus",
-    n.NODE_DESC AS "nodeDesc",
-    n.CREATED_AT AS "createdAt",
-    n.UPDATED_AT AS "updatedAt",
-    LISTAGG(t.TAG_NAME, ',') WITHIN GROUP (ORDER BY t.TAG_NAME) AS "tags"
-  FROM MT_NODES n
-  LEFT JOIN MT_NODE_TAG_MEMBERS ntm ON n.NODE_ID = ntm.NODE_ID
-  LEFT JOIN MT_TAGS t ON ntm.TAG_ID = t.TAG_ID
-  WHERE n.NODE_STATUS = :nodeStatus
-  GROUP BY n.NODE_ID, n.NODE_NAME, n.HOST, n.PORT, n.NODE_STATUS, n.NODE_DESC, n.CREATED_AT, n.UPDATED_AT
-  ORDER BY n.CREATED_AT DESC
+    n.MNG_DOM_NODE_ID AS "nodeId",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    n.MNG_DOM_NODE_HST_IP AS "host",
+    n.MNG_DOM_NODE_HST_PORT_NO AS "port",
+    n.MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  n.NODE_DESC AS "nodeDesc",
+    n.REG_DDTS AS "createdAt",
+    n.CHG_DDTS AS "updatedAt",
+    LISTAGG(t.MNG_DOM_TAG_NM, ',') WITHIN GROUP (ORDER BY t.MNG_DOM_TAG_NM) AS "tags"
+  FROM TWAA0001M00 n
+  LEFT JOIN TWAA0002M00 ntm ON n.MNG_DOM_NODE_ID = ntm.MPG_MNG_DOM_NODE_ID
+  LEFT JOIN TWAA0003M00 t ON ntm.MPG_MNG_DOM_TAG_ID = t.MNG_DOM_TAG_ID
+  WHERE n.MNG_DOM_NODE_STAT_TYP_CODE = :nodeStatus
+  GROUP BY n.MNG_DOM_NODE_ID, n.MNG_DOM_NODE_NM, n.MNG_DOM_NODE_HST_IP, n.MNG_DOM_NODE_HST_PORT_NO, n.MNG_DOM_NODE_STAT_TYP_CODE, n.REG_DDTS, n.CHG_DDTS
+  ORDER BY n.REG_DDTS DESC
 `;
 
 /**
@@ -135,17 +135,17 @@ export const SELECT_NODES_BY_STATUS_WITH_TAGS = `
  */
 export const SELECT_NODES_BY_STATUS = `
   SELECT 
-    NODE_ID AS "nodeId",
-    NODE_NAME AS "nodeName",
-    HOST AS "host",
-    PORT AS "port",
-    NODE_STATUS AS "nodeStatus",
-    NODE_DESC AS "nodeDesc",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_NODES
-  WHERE NODE_STATUS = :nodeStatus
-  ORDER BY CREATED_AT DESC
+    MNG_DOM_NODE_ID AS "nodeId",
+    MNG_DOM_NODE_NM AS "nodeName",
+    MNG_DOM_NODE_HST_IP AS "host",
+    MNG_DOM_NODE_HST_PORT_NO AS "port",
+    MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  NODE_DESC AS "nodeDesc",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_STAT_TYP_CODE = :nodeStatus
+  ORDER BY REG_DDTS DESC
 `;
 
 /**
@@ -153,21 +153,21 @@ export const SELECT_NODES_BY_STATUS = `
  */
 export const SEARCH_NODES_BY_HOST_WITH_TAGS = `
   SELECT 
-    n.NODE_ID AS "nodeId",
-    n.NODE_NAME AS "nodeName",
-    n.HOST AS "host",
-    n.PORT AS "port",
-    n.NODE_STATUS AS "nodeStatus",
-    n.NODE_DESC AS "nodeDesc",
-    n.CREATED_AT AS "createdAt",
-    n.UPDATED_AT AS "updatedAt",
-    LISTAGG(t.TAG_NAME, ',') WITHIN GROUP (ORDER BY t.TAG_NAME) AS "tags"
-  FROM MT_NODES n
-  LEFT JOIN MT_NODE_TAG_MEMBERS ntm ON n.NODE_ID = ntm.NODE_ID
-  LEFT JOIN MT_TAGS t ON ntm.TAG_ID = t.TAG_ID
-  WHERE n.HOST LIKE :host
-  GROUP BY n.NODE_ID, n.NODE_NAME, n.HOST, n.PORT, n.NODE_STATUS, n.NODE_DESC, n.CREATED_AT, n.UPDATED_AT
-  ORDER BY n.CREATED_AT DESC
+    n.MNG_DOM_NODE_ID AS "nodeId",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    n.MNG_DOM_NODE_HST_IP AS "host",
+    n.MNG_DOM_NODE_HST_PORT_NO AS "port",
+    n.MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  n.NODE_DESC AS "nodeDesc",
+    n.REG_DDTS AS "createdAt",
+    n.CHG_DDTS AS "updatedAt",
+    LISTAGG(t.MNG_DOM_TAG_NM, ',') WITHIN GROUP (ORDER BY t.MNG_DOM_TAG_NM) AS "tags"
+  FROM TWAA0001M00 n
+  LEFT JOIN TWAA0002M00 ntm ON n.MNG_DOM_NODE_ID = ntm.MPG_MNG_DOM_NODE_ID
+  LEFT JOIN TWAA0003M00 t ON ntm.MPG_MNG_DOM_TAG_ID = t.MNG_DOM_TAG_ID
+  WHERE n.MNG_DOM_NODE_HST_IP LIKE :host
+  GROUP BY n.MNG_DOM_NODE_ID, n.MNG_DOM_NODE_NM, n.MNG_DOM_NODE_HST_IP, n.MNG_DOM_NODE_HST_PORT_NO, n.MNG_DOM_NODE_STAT_TYP_CODE, n.REG_DDTS, n.CHG_DDTS
+  ORDER BY n.REG_DDTS DESC
 `;
 
 /**
@@ -178,17 +178,17 @@ export const SEARCH_NODES_BY_HOST_WITH_TAGS = `
  */
 export const SEARCH_NODES_BY_HOST = `
   SELECT 
-    NODE_ID AS "nodeId",
-    NODE_NAME AS "nodeName",
-    HOST AS "host",
-    PORT AS "port",
-    NODE_STATUS AS "nodeStatus",
-    NODE_DESC AS "nodeDesc",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_NODES
-  WHERE HOST LIKE :host
-  ORDER BY CREATED_AT DESC
+    MNG_DOM_NODE_ID AS "nodeId",
+    MNG_DOM_NODE_NM AS "nodeName",
+    MNG_DOM_NODE_HST_IP AS "host",
+    MNG_DOM_NODE_HST_PORT_NO AS "port",
+    MNG_DOM_NODE_STAT_TYP_CODE AS "nodeStatus",
+  --  NODE_DESC AS "nodeDesc",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_HST_IP LIKE :host
+  ORDER BY REG_DDTS DESC
 `;
 
 /**
@@ -205,26 +205,32 @@ export const SEARCH_NODES_BY_HOST = `
  * - :nodeId (NUMBER): 생성된 노드 ID
  */
 export const INSERT_NODE = `
-  INSERT INTO MT_NODES (
-    NODE_ID,
-    NODE_NAME,
-    HOST,
-    PORT,
-    NODE_STATUS,
-    NODE_DESC,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0001M00 (
+    MNG_DOM_NODE_ID,
+    MNG_DOM_NODE_NM,
+    MNG_DOM_NODE_HST_IP,
+    MNG_DOM_NODE_HST_PORT_NO,
+    MNG_DOM_NODE_STAT_TYP_CODE,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_NODE_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_NODE_ID),0)+1 FROM TWAA0001M00),
     :nodeName,
     :host,
     :port,
     :nodeStatus,
-    :nodeDesc,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING NODE_ID INTO :id
+  RETURNING MNG_DOM_NODE_ID INTO :id
 `;
 
 /**
@@ -242,16 +248,15 @@ export const INSERT_NODE = `
  * - :nodeId (NUMBER): 수정된 노드 ID
  */
 export const UPDATE_NODE = `
-  UPDATE MT_NODES
+  UPDATE TWAA0001M00
   SET 
-    NODE_NAME = :nodeName,
-    HOST = :host,
-    PORT = :port,
-    NODE_STATUS = :nodeStatus,
-    NODE_DESC = :nodeDesc,
-    UPDATED_AT = SYSTIMESTAMP
-  WHERE NODE_ID = :nodeId
-  RETURNING NODE_ID INTO :updatedId
+    MNG_DOM_NODE_NM = :nodeName,
+    MNG_DOM_NODE_HST_IP = :host,
+    MNG_DOM_NODE_HST_PORT_NO = :port,
+    MNG_DOM_NODE_STAT_TYP_CODE = :nodeStatus,
+    CHG_DDTS = SYSTIMESTAMP
+  WHERE MNG_DOM_NODE_ID = :nodeId
+  RETURNING MNG_DOM_NODE_ID INTO :updatedId
 `;
 
 /**
@@ -262,11 +267,11 @@ export const UPDATE_NODE = `
  * - :nodeStatus (VARCHAR2): 새 노드 상태
  */
 export const UPDATE_NODE_STATUS = `
-  UPDATE MT_NODES
+  UPDATE TWAA0001M00
   SET 
-    NODE_STATUS = :nodeStatus,
-    UPDATED_AT = SYSTIMESTAMP
-  WHERE NODE_ID = :nodeId
+    MNG_DOM_NODE_STAT_TYP_CODE = :nodeStatus,
+    CHG_DDTS = SYSTIMESTAMP
+  WHERE MNG_DOM_NODE_ID = :nodeId
 `;
 
 /**
@@ -277,8 +282,8 @@ export const UPDATE_NODE_STATUS = `
  * - :nodeId (NUMBER): 삭제할 노드 ID
  */
 export const DELETE_NODE = `
-  DELETE FROM MT_NODES
-  WHERE NODE_ID = :nodeId
+  DELETE FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_ID = :nodeId
 `;
 
 /**
@@ -290,9 +295,9 @@ export const DELETE_NODE = `
  */
 export const CHECK_NODE_NAME_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_NODES
-  WHERE NODE_NAME = :nodeName
-  AND (:excludeId IS NULL OR NODE_ID != :excludeId)
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_NM = :nodeName
+  AND (:excludeId IS NULL OR MNG_DOM_NODE_ID != :excludeId)
 `;
 
 /**
@@ -305,17 +310,17 @@ export const CHECK_NODE_NAME_EXISTS = `
  */
 export const CHECK_HOST_PORT_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_NODES
-  WHERE HOST = :host AND PORT = :port
-  AND (:excludeId IS NULL OR NODE_ID != :excludeId)
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_HST_IP = :host AND MNG_DOM_NODE_HST_PORT_NO = :port
+  AND (:excludeId IS NULL OR MNG_DOM_NODE_ID != :excludeId)
 `;
 
 export const CHECK_NODE_HOST_PORT_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_NODES
-  WHERE HOST = :host
-  AND PORT = :port
-  AND (:excludeId IS NULL OR NODE_ID != :excludeId)
+  FROM TWAA0001M00
+  WHERE MNG_DOM_NODE_HST_IP = :host
+  AND MNG_DOM_NODE_HST_PORT_NO = :port
+  AND (:excludeId IS NULL OR MNG_DOM_NODE_ID != :excludeId)
 `;
 
 /**
@@ -324,9 +329,9 @@ export const CHECK_NODE_HOST_PORT_EXISTS = `
 export const CHECK_NODE_USED_IN_SYNTHETIC_TESTS = `
   SELECT 
     COUNT(*) AS COUNT,
-    LISTAGG(SYNTHETIC_TEST_NAME, ', ') WITHIN GROUP (ORDER BY SYNTHETIC_TEST_NAME) AS "testNames"
-  FROM MT_SYNTHETIC_TESTS
-  WHERE TARGET_TYPE = 'node'
-    AND TARGET_ID = :nodeId
-  GROUP BY TARGET_TYPE, TARGET_ID
+    LISTAGG(MNG_DOM_SYNT_TEST_NM, ', ') WITHIN GROUP (ORDER BY MNG_DOM_SYNT_TEST_NM) AS "testNames"
+  FROM TWAA0009M00
+  WHERE MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'node'
+    AND SYNT_TEST_MNG_DOM_EXE_TRG_ID = :nodeId
+  GROUP BY MNG_DOM_SYNT_TEST_TRGT_TYP_NM, SYNT_TEST_MNG_DOM_EXE_TRG_ID
 `;

@@ -13,21 +13,21 @@ import oracledb from 'oracledb';
  */
 export const SELECT_APIS_WITH_TAGS = `
   SELECT 
-    a.API_ID AS "apiId",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri",
-    a.METHOD AS "method",
-    a.CREATED_AT AS "createdAt",
-    a.UPDATED_AT AS "updatedAt",
-    count(ap.API_PARAMETER_ID) AS "apiParameterCount",
-    LISTAGG(ap.API_PARAMETER_ID, ',') WITHIN GROUP (ORDER BY ap.API_PARAMETER_ID) AS "apiParameterIds",
-    LISTAGG(DISTINCT t.TAG_NAME, ',') WITHIN GROUP (ORDER BY t.TAG_NAME) AS "tags"
-  FROM MT_APIS a
-  LEFT JOIN MT_API_PARAMETERS ap ON a.API_ID = ap.API_ID
-  LEFT JOIN MT_API_TAG_MEMBERS atm ON a.API_ID = atm.API_ID
-  LEFT JOIN MT_TAGS t ON atm.TAG_ID = t.TAG_ID
-  GROUP BY a.API_ID, a.API_NAME, a.URI, a.METHOD, a.CREATED_AT, a.UPDATED_AT
-  ORDER BY a.CREATED_AT DESC
+    a.MNG_DOM_API_ID AS "apiId",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri",
+    a.HTTP_METHD_NM AS "method",
+    a.REG_DDTS AS "createdAt",
+    a.CHG_DDTS AS "updatedAt",
+    count(ap.MNG_DOM_API_INP_ID) AS "apiParameterCount",
+    LISTAGG(ap.MNG_DOM_API_INP_ID, ',') WITHIN GROUP (ORDER BY ap.MNG_DOM_API_INP_ID) AS "apiParameterIds",
+    LISTAGG(DISTINCT t.MNG_DOM_TAG_NM, ',') WITHIN GROUP (ORDER BY t.MNG_DOM_TAG_NM) AS "tags"
+  FROM TWAA0007M00 a
+  LEFT JOIN TWAA0006M00 ap ON a.MNG_DOM_API_ID = ap.MNG_DOM_API_ID
+  LEFT JOIN TWAA0008M00 atm ON a.MNG_DOM_API_ID = atm.MPG_MNG_DOM_API_ID
+  LEFT JOIN TWAA0003M00 t ON atm.MPG_MNG_DOM_TAG_ID = t.MNG_DOM_TAG_ID
+  GROUP BY a.MNG_DOM_API_ID, a.MNG_DOM_API_NM, a.MNG_DOM_API_URL, a.HTTP_METHD_NM, a.REG_DDTS, a.CHG_DDTS
+  ORDER BY a.REG_DDTS DESC
 `;
 
 /**
@@ -35,17 +35,17 @@ export const SELECT_APIS_WITH_TAGS = `
  */
 export const SELECT_APIS = `
   SELECT 
-    a.API_ID AS "apiId",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri",
-    a.METHOD AS "method",
-    a.CREATED_AT AS "createdAt",
-    a.UPDATED_AT AS "updatedAt",
-    LISTAGG(ap.API_PARAMETER_ID, ',') WITHIN GROUP (ORDER BY ap.API_PARAMETER_ID) AS "apiParameterIds"
-  FROM MT_APIS a
-  LEFT JOIN MT_API_PARAMETERS ap ON a.API_ID = ap.API_ID
-  GROUP BY a.API_ID, a.API_NAME, a.URI, a.METHOD, a.CREATED_AT, a.UPDATED_AT
-  ORDER BY a.CREATED_AT DESC
+    a.MNG_DOM_API_ID AS "apiId",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri",
+    a.HTTP_METHD_NM AS "method",
+    a.REG_DDTS AS "createdAt",
+    a.CHG_DDTS AS "updatedAt",
+    LISTAGG(ap.MNG_DOM_API_INP_ID, ',') WITHIN GROUP (ORDER BY ap.MNG_DOM_API_INP_ID) AS "apiParameterIds"
+  FROM TWAA0007M00 a
+  LEFT JOIN TWAA0006M00 ap ON a.MNG_DOM_API_ID = ap.MNG_DOM_API_ID
+  GROUP BY a.MNG_DOM_API_ID, a.MNG_DOM_API_NM, a.MNG_DOM_API_URL, a.HTTP_METHD_NM, a.REG_DDTS, a.CHG_DDTS
+  ORDER BY a.REG_DDTS DESC
 `;
 
 /**
@@ -53,27 +53,27 @@ export const SELECT_APIS = `
  */
 export const SELECT_API_DETAIL_WITH_TAGS = `
   SELECT 
-    a.API_ID AS "apiId",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri",
-    a.METHOD AS "method",
-    a.CREATED_AT AS "createdAt",
-    a.UPDATED_AT AS "updatedAt",
-    LISTAGG(DISTINCT t.TAG_NAME, ',') WITHIN GROUP (ORDER BY t.TAG_NAME) AS "tags",
-    ap.API_PARAMETER_ID AS "apiParameterId",
-    ap.API_PARAMETER_NAME AS "apiParameterName",
-    ap.API_PARAMETER_TYPE AS "apiParameterType",
-    ap.API_PARAMETER_REQUIRED AS "apiParameterRequired",
-    TO_CHAR(ap.API_PARAMETER_DESC) AS "apiParameterDesc"
-  FROM MT_APIS a
-  LEFT JOIN MT_API_PARAMETERS ap ON a.API_ID = ap.API_ID
-  LEFT JOIN MT_API_TAG_MEMBERS atm ON a.API_ID = atm.API_ID
-  LEFT JOIN MT_TAGS t ON atm.TAG_ID = t.TAG_ID
-  WHERE a.API_ID = :apiId
-  GROUP BY a.API_ID, a.API_NAME, a.URI, a.METHOD, a.CREATED_AT, a.UPDATED_AT,
-           ap.API_PARAMETER_ID, ap.API_PARAMETER_NAME, ap.API_PARAMETER_TYPE,
-           ap.API_PARAMETER_REQUIRED, TO_CHAR(ap.API_PARAMETER_DESC)
-  ORDER BY ap.API_PARAMETER_ID
+    a.MNG_DOM_API_ID AS "apiId",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri",
+    a.HTTP_METHD_NM AS "method",
+    a.REG_DDTS AS "createdAt",
+    a.CHG_DDTS AS "updatedAt",
+    LISTAGG(DISTINCT t.MNG_DOM_TAG_NM, ',') WITHIN GROUP (ORDER BY t.MNG_DOM_TAG_NM) AS "tags",
+    ap.MNG_DOM_API_INP_ID AS "apiParameterId",
+    ap.MNG_DOM_API_INP_NM AS "apiParameterName",
+    ap.MNG_DOM_API_INP_TYP_NM AS "apiParameterType",
+    ap.MNG_DOM_API_INP_ESN_YN AS "apiParameterRequired",
+    TO_CHAR(ap.MNG_DOM_API_INP_DES_CNTT) AS "apiParameterDesc"
+  FROM TWAA0007M00 a
+  LEFT JOIN TWAA0006M00 ap ON a.MNG_DOM_API_ID = ap.MNG_DOM_API_ID
+  LEFT JOIN TWAA0008M00 atm ON a.MNG_DOM_API_ID = atm.MPG_MNG_DOM_API_ID
+  LEFT JOIN TWAA0003M00 t ON atm.MPG_MNG_DOM_TAG_ID = t.MNG_DOM_TAG_ID
+  WHERE a.MNG_DOM_API_ID = :apiId
+  GROUP BY a.MNG_DOM_API_ID, a.MNG_DOM_API_NM, a.MNG_DOM_API_URL, a.HTTP_METHD_NM, a.REG_DDTS, a.CHG_DDTS,
+           ap.MNG_DOM_API_INP_ID, ap.MNG_DOM_API_INP_NM, ap.MNG_DOM_API_INP_TYP_NM,
+           ap.MNG_DOM_API_INP_ESN_YN, TO_CHAR(ap.MNG_DOM_API_INP_DES_CNTT)
+  ORDER BY ap.MNG_DOM_API_INP_ID
 `;
 
 /**
@@ -81,21 +81,21 @@ export const SELECT_API_DETAIL_WITH_TAGS = `
  */
 export const SELECT_API_DETAIL = `
   SELECT 
-    a.API_ID AS "apiId",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri",
-    a.METHOD AS "method",
-    a.CREATED_AT AS "createdAt",
-    a.UPDATED_AT AS "updatedAt",
-    ap.API_PARAMETER_ID AS "apiParameterId",
-    ap.API_PARAMETER_NAME AS "apiParameterName",
-    ap.API_PARAMETER_TYPE AS "apiParameterType",
-    ap.API_PARAMETER_REQUIRED AS "apiParameterRequired",
-    TO_CHAR(ap.API_PARAMETER_DESC) AS "apiParameterDesc"
-  FROM MT_APIS a
-  LEFT JOIN MT_API_PARAMETERS ap ON a.API_ID = ap.API_ID
-  WHERE a.API_ID = :apiId
-  ORDER BY ap.API_PARAMETER_ID
+    a.MNG_DOM_API_ID AS "apiId",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri",
+    a.HTTP_METHD_NM AS "method",
+    a.REG_DDTS AS "createdAt",
+    a.CHG_DDTS AS "updatedAt",
+    ap.MNG_DOM_API_INP_ID AS "apiParameterId",
+    ap.MNG_DOM_API_INP_NM AS "apiParameterName",
+    ap.MNG_DOM_API_INP_TYP_NM AS "apiParameterType",
+    ap.MNG_DOM_API_INP_ESN_YN AS "apiParameterRequired",
+    TO_CHAR(ap.MNG_DOM_API_INP_DES_CNTT) AS "apiParameterDesc"
+  FROM TWAA0007M00 a
+  LEFT JOIN TWAA0006M00 ap ON a.MNG_DOM_API_ID = ap.MNG_DOM_API_ID
+  WHERE a.MNG_DOM_API_ID = :apiId
+  ORDER BY ap.MNG_DOM_API_INP_ID
 `;
 
 /**
@@ -103,36 +103,44 @@ export const SELECT_API_DETAIL = `
  */
 export const SELECT_API_BY_ID = `
   SELECT 
-    API_ID AS "apiId",
-    API_NAME AS "apiName",
-    URI AS "uri",
-    METHOD AS "method",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_APIS
-  WHERE API_ID = :apiId
+    MNG_DOM_API_ID AS "apiId",
+    MNG_DOM_API_NM AS "apiName",
+    MNG_DOM_API_URL AS "uri",
+    HTTP_METHD_NM AS "method",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0007M00
+  WHERE MNG_DOM_API_ID = :apiId
 `;
 
 /**
  * API 생성 (RETURNING INTO 사용)
  */
 export const INSERT_API = `
-  INSERT INTO MT_APIS (
-    API_ID,
-    API_NAME,
-    URI,
-    METHOD,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0007M00 (
+    MNG_DOM_API_ID,
+    MNG_DOM_API_NM,
+    MNG_DOM_API_URL,
+    HTTP_METHD_NM,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_API_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_API_ID),0)+1 FROM TWAA0007M00),
     :apiName,
     :uri,
     :method,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING API_ID INTO :id
+  RETURNING MNG_DOM_API_ID INTO :id
 `;
 
 /**
@@ -146,14 +154,14 @@ export const INSERT_API_BINDS = {
  * API 수정 (RETURNING INTO 사용)
  */
 export const UPDATE_API = `
-  UPDATE MT_APIS
+  UPDATE TWAA0007M00
   SET 
-    API_NAME = :apiName,
-    URI = :uri,
-    METHOD = :method,
-    UPDATED_AT = SYSTIMESTAMP
-  WHERE API_ID = :apiId
-  RETURNING API_ID INTO :updatedId
+    MNG_DOM_API_NM = :apiName,
+    MNG_DOM_API_URL = :uri,
+    HTTP_METHD_NM = :method,
+    CHG_DDTS = SYSTIMESTAMP
+  WHERE MNG_DOM_API_ID = :apiId
+  RETURNING MNG_DOM_API_ID INTO :updatedId
 `;
 
 /**
@@ -167,32 +175,42 @@ export const UPDATE_API_BINDS = {
  * API 삭제
  */
 export const DELETE_API = `
-  DELETE FROM MT_APIS
-  WHERE API_ID = :apiId
+  DELETE FROM TWAA0007M00
+  WHERE MNG_DOM_API_ID = :apiId
 `;
 
 /**
  * API 파라미터 생성 (RETURNING INTO 사용)
  */
 export const INSERT_API_PARAMETER = `
-  INSERT INTO MT_API_PARAMETERS (
-    API_PARAMETER_ID,
-    API_ID,
-    API_PARAMETER_NAME,
-    API_PARAMETER_TYPE,
-    API_PARAMETER_REQUIRED,
-    API_PARAMETER_DESC,
-    CREATED_AT
+  INSERT INTO TWAA0006M00 (
+    MNG_DOM_API_INP_ID,
+    MNG_DOM_API_ID,
+    MNG_DOM_API_INP_NM,
+    MNG_DOM_API_INP_TYP_NM,
+    MNG_DOM_API_INP_ESN_YN,
+    MNG_DOM_API_INP_DES_CNTT,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_API_PARAMETER_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_API_INP_ID),0)+1 FROM TWAA0006M00),
     :apiId,
     :apiParameterName,
     :apiParameterType,
     :apiParameterRequired,
     :apiParameterDesc,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING API_PARAMETER_ID INTO :id
+  RETURNING MNG_DOM_API_INP_ID INTO :id
 `;
 
 /**
@@ -206,29 +224,29 @@ export const INSERT_API_PARAMETER_BINDS = {
  * API 파라미터 수정
  */
 export const UPDATE_API_PARAMETER = `
-  UPDATE MT_API_PARAMETERS
+  UPDATE TWAA0006M00
   SET 
-    API_PARAMETER_NAME = :apiParameterName,
-    API_PARAMETER_TYPE = :apiParameterType,
-    API_PARAMETER_REQUIRED = :apiParameterRequired,
-    API_PARAMETER_DESC = :apiParameterDesc
-  WHERE API_PARAMETER_ID = :apiParameterId
+    MNG_DOM_API_INP_NM = :apiParameterName,
+    MNG_DOM_API_INP_TYP_NM = :apiParameterType,
+    MNG_DOM_API_INP_ESN_YN = :apiParameterRequired,
+    MNG_DOM_API_INP_DES_CNTT = :apiParameterDesc
+  WHERE MNG_DOM_API_INP_ID = :apiParameterId
 `;
 
 /**
  * API 파라미터 삭제
  */
 export const DELETE_API_PARAMETER = `
-  DELETE FROM MT_API_PARAMETERS
-  WHERE API_PARAMETER_ID = :apiParameterId
+  DELETE FROM TWAA0006M00
+  WHERE MNG_DOM_API_INP_ID = :apiParameterId
 `;
 
 /**
  * 특정 API의 모든 파라미터 삭제
  */
 export const DELETE_ALL_API_PARAMETERS = `
-  DELETE FROM MT_API_PARAMETERS
-  WHERE API_ID = :apiId
+  DELETE FROM TWAA0006M00
+  WHERE MNG_DOM_API_ID = :apiId
 `;
 
 /**
@@ -236,20 +254,20 @@ export const DELETE_ALL_API_PARAMETERS = `
  */
 export const CHECK_API_NAME_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_APIS
-  WHERE API_NAME = :apiName
-  AND (:excludeId IS NULL OR API_ID != :excludeId)
+  FROM TWAA0007M00
+  WHERE MNG_DOM_API_NM = :apiName
+  AND (:excludeId IS NULL OR MNG_DOM_API_ID != :excludeId)
 `;
 
 /**
- * API URI + METHOD 조합 중복 확인
+ * API MNG_DOM_API_URL + HTTP_METHD_NM 조합 중복 확인
  */
 export const CHECK_API_URI_METHOD_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_APIS
-  WHERE URI = :uri
-  AND METHOD = :method
-  AND (:excludeId IS NULL OR API_ID != :excludeId)
+  FROM TWAA0007M00
+  WHERE MNG_DOM_API_URL = :uri
+  AND HTTP_METHD_NM = :method
+  AND (:excludeId IS NULL OR MNG_DOM_API_ID != :excludeId)
 `;
 
 /**
@@ -257,16 +275,16 @@ export const CHECK_API_URI_METHOD_EXISTS = `
  */
 export const SELECT_API_PARAMETERS = `
   SELECT 
-    API_PARAMETER_ID AS "apiParameterId",
-    API_ID AS "apiId",
-    API_PARAMETER_NAME AS "apiParameterName",
-    API_PARAMETER_TYPE AS "apiParameterType",
-    API_PARAMETER_REQUIRED AS "apiParameterRequired",
-    TO_CHAR(API_PARAMETER_DESC) AS "apiParameterDesc",
-    CREATED_AT AS "createdAt"
-  FROM MT_API_PARAMETERS
-  WHERE API_ID = :apiId
-  ORDER BY API_PARAMETER_ID
+    MNG_DOM_API_INP_ID AS "apiParameterId",
+    MNG_DOM_API_ID AS "apiId",
+    MNG_DOM_API_INP_NM AS "apiParameterName",
+    MNG_DOM_API_INP_TYP_NM AS "apiParameterType",
+    MNG_DOM_API_INP_ESN_YN AS "apiParameterRequired",
+    TO_CHAR(MNG_DOM_API_INP_DES_CNTT) AS "apiParameterDesc",
+    REG_DDTS AS "createdAt"
+  FROM TWAA0006M00
+  WHERE MNG_DOM_API_ID = :apiId
+  ORDER BY MNG_DOM_API_INP_ID
 `;
 
 /**
@@ -274,16 +292,16 @@ export const SELECT_API_PARAMETERS = `
  */
 export const SELECT_PARAMETERS_BY_IDS = `
   SELECT 
-    API_PARAMETER_ID AS "apiParameterId",
-    API_ID AS "apiId",
-    API_PARAMETER_NAME AS "apiParameterName",
-    API_PARAMETER_TYPE AS "apiParameterType",
-    API_PARAMETER_REQUIRED AS "apiParameterRequired",
-    TO_CHAR(API_PARAMETER_DESC) AS "apiParameterDesc",
-    CREATED_AT AS "createdAt"
-  FROM MT_API_PARAMETERS
-  WHERE API_PARAMETER_ID IN (:ids)
-  ORDER BY API_PARAMETER_ID
+    MNG_DOM_API_INP_ID AS "apiParameterId",
+    MNG_DOM_API_ID AS "apiId",
+    MNG_DOM_API_INP_NM AS "apiParameterName",
+    MNG_DOM_API_INP_TYP_NM AS "apiParameterType",
+    MNG_DOM_API_INP_ESN_YN AS "apiParameterRequired",
+    TO_CHAR(MNG_DOM_API_INP_DES_CNTT) AS "apiParameterDesc",
+    REG_DDTS AS "createdAt"
+  FROM TWAA0006M00
+  WHERE MNG_DOM_API_INP_ID IN (:ids)
+  ORDER BY MNG_DOM_API_INP_ID
 `;
 
 /**
@@ -292,8 +310,8 @@ export const SELECT_PARAMETERS_BY_IDS = `
 export const CHECK_API_USED_IN_SYNTHETIC_TESTS = `
   SELECT 
     COUNT(*) AS COUNT,
-    LISTAGG(SYNTHETIC_TEST_NAME, ', ') WITHIN GROUP (ORDER BY SYNTHETIC_TEST_NAME) AS "testNames"
-  FROM MT_SYNTHETIC_TESTS
-  WHERE API_ID = :apiId
-  GROUP BY API_ID
+    LISTAGG(MNG_DOM_SYNT_TEST_NM, ', ') WITHIN GROUP (ORDER BY MNG_DOM_SYNT_TEST_NM) AS "testNames"
+  FROM TWAA0009M00
+  WHERE MNG_DOM_API_ID = :apiId
+  GROUP BY MNG_DOM_API_ID
 `;

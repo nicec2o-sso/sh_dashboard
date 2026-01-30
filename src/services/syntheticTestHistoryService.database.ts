@@ -186,35 +186,35 @@ export class SyntheticTestHistoryServiceDB {
       
       // Synthetic Test ID 필터
       if (options.syntheticTestId) {
-        where += ` AND h.SYNTHETIC_TEST_ID = :syntheticTestId`;
+        where += ` AND h.MPG_MNG_DOM_SYNT_TEST_ID = :syntheticTestId`;
         bindParams.syntheticTestId = options.syntheticTestId;
       }
       
       // Synthetic Test Name 필터 (LIKE 검색)
       if (options.syntheticTestName) {
-        where += ` AND UPPER(st.SYNTHETIC_TEST_NAME) LIKE UPPER(:syntheticTestName)`;
+        where += ` AND UPPER(st.MNG_DOM_SYNT_TEST_NM) LIKE UPPER(:syntheticTestName)`;
         bindParams.syntheticTestName = `%${options.syntheticTestName}%`;
       }
       
       // 노드 ID 필터
       if (options.nodeId) {
-        where += ` AND h.NODE_ID = :nodeId`;
+        where += ` AND h.MNG_DOM_NODE_ID = :nodeId`;
         bindParams.nodeId = options.nodeId;
       }
       
       // 노드 이름 필터 (LIKE 검색)
       if (options.nodeName) {
-        where += ` AND UPPER(n.NODE_NAME) LIKE UPPER(:nodeName)`;
+        where += ` AND UPPER(n.MNG_DOM_NODE_NM) LIKE UPPER(:nodeName)`;
         bindParams.nodeName = `%${options.nodeName}%`;
       }
       
       // 노드 그룹 이름 필터 (EXISTS 서브쿼리 사용)
       if (options.nodeGroupName) {
         where += ` AND EXISTS (
-          SELECT 1 FROM MT_NODE_GROUP_MEMBERS ngm2 
-          JOIN MT_NODE_GROUPS ng2 ON ngm2.NODE_GROUP_ID = ng2.NODE_GROUP_ID 
-          WHERE ngm2.NODE_ID = h.NODE_ID 
-          AND UPPER(ng2.NODE_GROUP_NAME) LIKE UPPER(:nodeGroupName)
+          SELECT 1 FROM TWAA0005M00 ngm2 
+          JOIN TWAA0004M00 ng2 ON ngm2.MNG_DOM_NODE_GRP_ID = ng2.MNG_DOM_NODE_GRP_ID 
+          WHERE ngm2.MNG_DOM_NODE_ID = h.MNG_DOM_NODE_ID 
+          AND UPPER(ng2.SNET_MNG_NODE_GRP_NM) LIKE UPPER(:nodeGroupName)
         )`;
         bindParams.nodeGroupName = `%${options.nodeGroupName}%`;
       }
@@ -230,26 +230,26 @@ export class SyntheticTestHistoryServiceDB {
       if (options.notificationEnabled !== undefined) {
         if (options.notificationEnabled == false) {
           // 알림 발생: 실패 또는 임계값 초과
-          where += ` AND (h.SUCCESS = 'N' OR (st.ALERT_THRESHOLD_MS IS NOT NULL AND h.RESPONSE_TIME_MS > st.ALERT_THRESHOLD_MS))`;
+          where += ` AND (h.MNG_DOM_SYNT_TEST_SCS_YN = 'N' OR (st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC IS NOT NULL AND h.MNG_DOM_SYNT_TEST_RSP_MLSC > st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC))`;
         } else {
           // 정상: 성공 및 임계값 이하
-          where += ` AND h.SUCCESS = 'Y' AND (st.ALERT_THRESHOLD_MS IS NULL OR h.RESPONSE_TIME_MS <= st.ALERT_THRESHOLD_MS)`;
+          where += ` AND h.MNG_DOM_SYNT_TEST_SCS_YN = 'Y' AND (st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC IS NULL OR h.MNG_DOM_SYNT_TEST_RSP_MLSC <= st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC)`;
         }
       }
       
       // 날짜 범위 필터
       if (options.startDate) {
-        where += ` AND h.EXECUTED_AT >= :startDate`;
+        where += ` AND h.MNG_DOM_SYNT_TEST_EXE_TM >= :startDate`;
         bindParams.startDate = options.startDate;
       }
       
       if (options.endDate) {
-        where += ` AND h.EXECUTED_AT <= :endDate`;
+        where += ` AND h.MNG_DOM_SYNT_TEST_EXE_TM <= :endDate`;
         bindParams.endDate = options.endDate;
       }
       
       // 정렬: 최신순
-      where += ` ORDER BY h.EXECUTED_AT DESC`;
+      where += ` ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC`;
       
       sql += where;
 

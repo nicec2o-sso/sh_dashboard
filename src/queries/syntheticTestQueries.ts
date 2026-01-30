@@ -13,30 +13,29 @@ import oracledb from 'oracledb';
  */
 export const SELECT_SYNTHETIC_TESTS = `
   SELECT 
-    st.SYNTHETIC_TEST_ID AS "syntheticTestId",
-    st.SYNTHETIC_TEST_NAME AS "syntheticTestName",
-    st.TARGET_TYPE AS "targetType",
-    st.TARGET_ID AS "targetId",
-    st.API_ID AS "apiId",
-    st.INTERVAL_SECONDS AS "intervalSeconds",
-    st.ALERT_THRESHOLD_MS AS "alertThresholdMs",
-    st.TAGS AS "tags",
-    st.SYNTHETIC_TEST_ENABLED AS "syntheticTestEnabled",
-    st.CREATED_AT AS "createdAt",
-    st.UPDATED_AT AS "updatedAt",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri",
-    a.METHOD AS "method",
+    st.MNG_DOM_SYNT_TEST_ID AS "syntheticTestId",
+    st.MNG_DOM_SYNT_TEST_NM AS "syntheticTestName",
+    st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM AS "targetType",
+    st.SYNT_TEST_MNG_DOM_EXE_TRG_ID AS "targetId",
+    st.SYNT_TEST_MNG_DOM_API_ID AS "apiId",
+    st.SYNT_TEST_EXE_INTV_TIME_HMS AS "intervalSeconds",
+    st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC AS "alertThresholdMs",
+    st.MNG_DOM_SYNT_TEST_VTLT_YN AS "syntheticTestEnabled",
+    st.REG_DDTS AS "createdAt",
+    st.CHG_DDTS AS "updatedAt",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri",
+    a.HTTP_METHD_NM AS "method",
     CASE 
-      WHEN st.TARGET_TYPE = 'node' THEN n.NODE_NAME
-      WHEN st.TARGET_TYPE = 'group' THEN ng.NODE_GROUP_NAME
+      WHEN st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'node' THEN n.MNG_DOM_NODE_NM
+      WHEN st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'group' THEN ng.SNET_MNG_NODE_GRP_NM
       ELSE NULL
     END AS "targetName"
-  FROM MT_SYNTHETIC_TESTS st
-  LEFT JOIN MT_APIS a ON st.API_ID = a.API_ID
-  LEFT JOIN MT_NODES n ON st.TARGET_TYPE = 'node' AND st.TARGET_ID = n.NODE_ID
-  LEFT JOIN MT_NODE_GROUPS ng ON st.TARGET_TYPE = 'group' AND st.TARGET_ID = ng.NODE_GROUP_ID
-  ORDER BY st.CREATED_AT DESC
+  FROM TWAA0009M00 st
+  LEFT JOIN TWAA0007M00 a ON st.SYNT_TEST_MNG_DOM_API_ID = a.MNG_DOM_API_ID
+  LEFT JOIN TWAA0001M00 n ON st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'node' AND st.SYNT_TEST_MNG_DOM_EXE_TRG_ID = n.MNG_DOM_NODE_ID
+  LEFT JOIN TWAA0004M00 ng ON st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'group' AND st.SYNT_TEST_MNG_DOM_EXE_TRG_ID = ng.MNG_DOM_NODE_GRP_ID
+  ORDER BY st.REG_DDTS DESC
 `;
 
 /**
@@ -47,30 +46,29 @@ export const SELECT_SYNTHETIC_TESTS = `
  */
 export const SELECT_SYNTHETIC_TEST_DETAIL = `
   SELECT 
-    st.SYNTHETIC_TEST_ID AS "syntheticTestId",
-    st.SYNTHETIC_TEST_NAME AS "syntheticTestName",
-    st.TARGET_TYPE AS "targetType",
-    st.TARGET_ID AS "targetId",
-    st.API_ID AS "apiId",
-    st.INTERVAL_SECONDS AS "intervalSeconds",
-    st.ALERT_THRESHOLD_MS AS "alertThresholdMs",
-    st.TAGS AS "tags",
-    st.SYNTHETIC_TEST_ENABLED AS "syntheticTestEnabled",
-    st.CREATED_AT AS "createdAt",
-    st.UPDATED_AT AS "updatedAt",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri",
-    a.METHOD AS"method",
+    st.MNG_DOM_SYNT_TEST_ID AS "syntheticTestId",
+    st.MNG_DOM_SYNT_TEST_NM AS "syntheticTestName",
+    st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM AS "targetType",
+    st.SYNT_TEST_MNG_DOM_EXE_TRG_ID AS "targetId",
+    st.SYNT_TEST_MNG_DOM_API_ID AS "apiId",
+    st.SYNT_TEST_EXE_INTV_TIME_HMS AS "intervalSeconds",
+    st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC AS "alertThresholdMs",
+    st.MNG_DOM_SYNT_TEST_VTLT_YN AS "syntheticTestEnabled",
+    st.REG_DDTS AS "createdAt",
+    st.CHG_DDTS AS "updatedAt",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri",
+    a.HTTP_METHD_NM AS"method",
     CASE 
-      WHEN st.TARGET_TYPE = 'node' THEN n.NODE_NAME
-      WHEN st.TARGET_TYPE = 'group' THEN ng.NODE_GROUP_NAME
+      WHEN st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'node' THEN n.MNG_DOM_NODE_NM
+      WHEN st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'group' THEN ng.SNET_MNG_NODE_GRP_NM
       ELSE NULL
     END AS "targetName"
-  FROM MT_SYNTHETIC_TESTS st
-  LEFT JOIN MT_APIS a ON st.API_ID = a.API_ID
-  LEFT JOIN MT_NODES n ON st.TARGET_TYPE = 'node' AND st.TARGET_ID = n.NODE_ID
-  LEFT JOIN MT_NODE_GROUPS ng ON st.TARGET_TYPE = 'group' AND st.TARGET_ID = ng.NODE_GROUP_ID
-  WHERE st.SYNTHETIC_TEST_ID = :syntheticTestId
+  FROM TWAA0009M00 st
+  LEFT JOIN TWAA0007M00 a ON st.SYNT_TEST_MNG_DOM_API_ID = a.MNG_DOM_API_ID
+  LEFT JOIN TWAA0001M00 n ON st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'node' AND st.SYNT_TEST_MNG_DOM_EXE_TRG_ID = n.MNG_DOM_NODE_ID
+  LEFT JOIN TWAA0004M00 ng ON st.MNG_DOM_SYNT_TEST_TRGT_TYP_NM = 'group' AND st.SYNT_TEST_MNG_DOM_EXE_TRG_ID = ng.MNG_DOM_NODE_GRP_ID
+  WHERE st.MNG_DOM_SYNT_TEST_ID = :syntheticTestId
 `;
 
 /**
@@ -90,32 +88,38 @@ export const SELECT_SYNTHETIC_TEST_DETAIL = `
  * - :id (NUMBER): 생성된 테스트 ID
  */
 export const INSERT_SYNTHETIC_TEST = `
-  INSERT INTO MT_SYNTHETIC_TESTS (
-    SYNTHETIC_TEST_ID,
-    SYNTHETIC_TEST_NAME,
-    TARGET_TYPE,
-    TARGET_ID,
-    API_ID,
-    INTERVAL_SECONDS,
-    ALERT_THRESHOLD_MS,
-    TAGS,
-    SYNTHETIC_TEST_ENABLED,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0009M00 (
+    MNG_DOM_SYNT_TEST_ID,
+    MNG_DOM_SYNT_TEST_NM,
+    MNG_DOM_SYNT_TEST_TRGT_TYP_NM,
+    SYNT_TEST_MNG_DOM_EXE_TRG_ID,
+    SYNT_TEST_MNG_DOM_API_ID,
+    SYNT_TEST_EXE_INTV_TIME_HMS,
+    MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC,
+    MNG_DOM_SYNT_TEST_VTLT_YN,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_SYNTHETIC_TEST_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_SYNT_TEST_ID),0)+1 FROM TWAA0009M00),
     :syntheticTestName,
     :targetType,
     :targetId,
     :apiId,
     :intervalSeconds,
     :alertThresholdMs,
-    :tags,
     :syntheticTestEnabled,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING SYNTHETIC_TEST_ID INTO :id
+  RETURNING MNG_DOM_SYNT_TEST_ID INTO :id
 `;
 
 /**
@@ -143,19 +147,18 @@ export const INSERT_SYNTHETIC_TEST_BINDS = {
  * - :updatedId (NUMBER): 수정된 테스트 ID
  */
 export const UPDATE_SYNTHETIC_TEST = `
-  UPDATE MT_SYNTHETIC_TESTS
+  UPDATE TWAA0009M00
   SET 
-    SYNTHETIC_TEST_NAME = :syntheticTestName,
-    TARGET_TYPE = :targetType,
-    TARGET_ID = :targetId,
-    API_ID = :apiId,
-    INTERVAL_SECONDS = :intervalSeconds,
-    ALERT_THRESHOLD_MS = :alertThresholdMs,
-    TAGS = :tags,
-    SYNTHETIC_TEST_ENABLED = :syntheticTestEnabled,
-    UPDATED_AT = SYSTIMESTAMP
-  WHERE SYNTHETIC_TEST_ID = :syntheticTestId
-  RETURNING SYNTHETIC_TEST_ID INTO :id
+    MNG_DOM_SYNT_TEST_NM = :syntheticTestName,
+    MNG_DOM_SYNT_TEST_TRGT_TYP_NM = :targetType,
+    SYNT_TEST_MNG_DOM_EXE_TRG_ID = :targetId,
+    SYNT_TEST_MNG_DOM_API_ID = :apiId,
+    SYNT_TEST_EXE_INTV_TIME_HMS = :intervalSeconds,
+    MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC = :alertThresholdMs
+    MNG_DOM_SYNT_TEST_VTLT_YN = :syntheticTestEnabled,
+    CHG_DDTS = SYSTIMESTAMP
+  WHERE MNG_DOM_SYNT_TEST_ID = :syntheticTestId
+  RETURNING MNG_DOM_SYNT_TEST_ID INTO :id
 `;
 
 /**
@@ -173,8 +176,8 @@ export const UPDATE_SYNTHETIC_TEST_BINDS = {
  * - :id (NUMBER): 삭제할 테스트 ID
  */
 export const DELETE_SYNTHETIC_TEST = `
-  DELETE FROM MT_SYNTHETIC_TESTS
-  WHERE SYNTHETIC_TEST_ID = :syntheticTestId
+  DELETE FROM TWAA0009M00
+  WHERE MNG_DOM_SYNT_TEST_ID = :syntheticTestId
 `;
 
 /**
@@ -185,11 +188,11 @@ export const DELETE_SYNTHETIC_TEST = `
  * - :enabled (CHAR): 활성화 여부 (Y, N)
  */
 export const UPDATE_SYNTHETIC_TEST_ENABLED = `
-  UPDATE MT_SYNTHETIC_TESTS
+  UPDATE TWAA0009M00
   SET 
-    SYNTHETIC_TEST_ENABLED = :syntheticTestEnabled,
-    UPDATED_AT = SYSTIMESTAMP
-  WHERE SYNTHETIC_TEST_ID = :syntheticTestId
+    MNG_DOM_SYNT_TEST_VTLT_YN = :syntheticTestEnabled,
+    CHG_DDTS = SYSTIMESTAMP
+  WHERE MNG_DOM_SYNT_TEST_ID = :syntheticTestId
 `;
 
 /**
@@ -209,18 +212,24 @@ export const UPDATE_SYNTHETIC_TEST_ENABLED = `
  * - :id (NUMBER): 생성된 이력 ID
  */
 export const INSERT_TEST_HISTORY = `
-  INSERT INTO MT_SYNTHETIC_TEST_HISTORY (
-    SYNTHETIC_TEST_HISTORY_ID,
-    SYNTHETIC_TEST_ID,
-    NODE_ID,
-    STATUS_CODE,
-    SUCCESS,
-    RESPONSE_TIME_MS,
-    EXECUTED_AT,
-    INPUT,
-    OUTPUT
+  INSERT INTO TWAA0011H00 (
+    MNG_DOM_SYNT_TEST_EXE_HIST_ID,
+    MNG_DOM_SYNT_TEST_ID,
+    MNG_DOM_NODE_ID,
+    MNG_DOM_SYNT_TEST_HTTP_RSP_CODE,
+    MNG_DOM_SYNT_TEST_SCS_YN,
+    MNG_DOM_SYNT_TEST_RSP_MLSC,
+    MNG_DOM_SYNT_TEST_EXE_TM,
+    MNG_DOM_SYNT_TEST_INP_CNTT,
+    MNG_DOM_SYNT_TEST_OPRT_CNTT,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_TEST_HISTORY_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_SYNT_TEST_EXE_HIST_ID),0)+1 FROM TWAA0011H00),
     :syntheticTestId,
     :nodeId,
     :statusCode,
@@ -228,9 +237,15 @@ export const INSERT_TEST_HISTORY = `
     :responseTimeMs,
     SYSTIMESTAMP,
     :input,
-    :output
+    :output,
+    'system',
+    SYSTIMESTAMP,
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING SYNTHETIC_TEST_HISTORY_ID INTO :id
+  RETURNING MNG_DOM_SYNT_TEST_EXE_HIST_ID INTO :id
 `;
 
 /**
@@ -250,22 +265,22 @@ export const INSERT_TEST_HISTORY_BINDS = {
  */
 export const SELECT_TEST_HISTORY = `
   SELECT 
-    h.SYNTHETIC_TEST_HISTORY_ID AS "syntheticTestHistoryId",
-    h.SYNTHETIC_TEST_ID AS "syntheticTestId",
-    h.NODE_ID AS "nodeId",
-    h.STATUS_CODE AS "statusCode",
-    h.SUCCESS AS "success",
-    h.RESPONSE_TIME_MS AS "responseTimeMs",
-    h.EXECUTED_AT AS "executedAt",
-    h.INPUT AS "input",
-    h.OUTPUT AS "output",
-    n.NODE_NAME AS "nodeName",
-    n.HOST AS "host",
-    n.PORT AS "port"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  LEFT JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
-  WHERE h.SYNTHETIC_TEST_ID = :syntheticTestId
-  ORDER BY h.EXECUTED_AT DESC
+    h.MNG_DOM_SYNT_TEST_EXE_HIST_ID AS "syntheticTestHistoryId",
+    h.MNG_DOM_SYNT_TEST_ID AS "syntheticTestId",
+    h.MNG_DOM_NODE_ID AS "nodeId",
+    h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE AS "statusCode",
+    h.MNG_DOM_SYNT_TEST_SCS_YN AS "success",
+    h.MNG_DOM_SYNT_TEST_RSP_MLSC AS "responseTimeMs",
+    h.MNG_DOM_SYNT_TEST_EXE_TM AS "executedAt",
+    h.MNG_DOM_SYNT_TEST_INP_CNTT AS "input",
+    h.MNG_DOM_SYNT_TEST_OPRT_CNTT AS "output",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    n.MNG_DOM_NODE_HST_IP AS "host",
+    n.MNG_DOM_NODE_HST_PORT_NO AS "port"
+  FROM TWAA0011H00 h
+  LEFT JOIN TWAA0001M00 n ON h.MNG_DOM_NODE_ID = n.MNG_DOM_NODE_ID
+  WHERE h.MNG_DOM_SYNT_TEST_ID = :syntheticTestId
+  ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC
   FETCH FIRST :limit ROWS ONLY
 `;
 
@@ -278,23 +293,23 @@ export const SELECT_TEST_HISTORY = `
  */
 export const SELECT_NODE_TEST_HISTORY = `
   SELECT 
-    h.SYNTHETIC_TEST_HISTORY_ID AS "syntheticTestHistoryId",
-    h.SYNTHETIC_TEST_ID AS "syntheticTestId",
-    h.NODE_ID AS "nodeId",
-    h.STATUS_CODE AS "statusCode",
-    h.SUCCESS AS "success",
-    h.RESPONSE_TIME_MS AS "responseTimeMs",
-    h.EXECUTED_AT AS "executedAt",
-    h.INPUT AS "input",
-    h.OUTPUT AS "output"
-    st.SYNTHETIC_TEST_NAME AS "syntheticTestName",
-    a.API_NAME AS "apiName",
-    a.URI AS "uri"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  LEFT JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
-  LEFT JOIN MT_APIS a ON st.API_ID = a.API_ID
-  WHERE h.NODE_ID = :nodeId
-  ORDER BY h.EXECUTED_AT DESC
+    h.MNG_DOM_SYNT_TEST_EXE_HIST_ID AS "syntheticTestHistoryId",
+    h.MNG_DOM_SYNT_TEST_ID AS "syntheticTestId",
+    h.MNG_DOM_NODE_ID AS "nodeId",
+    h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE AS "statusCode",
+    h.MNG_DOM_SYNT_TEST_SCS_YN AS "success",
+    h.MNG_DOM_SYNT_TEST_RSP_MLSC AS "responseTimeMs",
+    h.MNG_DOM_SYNT_TEST_EXE_TM AS "executedAt",
+    h.MNG_DOM_SYNT_TEST_INP_CNTT AS "input",
+    h.MNG_DOM_SYNT_TEST_OPRT_CNTT AS "output"
+    st.MNG_DOM_SYNT_TEST_NM AS "syntheticTestName",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "uri"
+  FROM TWAA0011H00 h
+  LEFT JOIN TWAA0009M00 st ON h.MNG_DOM_SYNT_TEST_ID = st.MNG_DOM_SYNT_TEST_ID
+  LEFT JOIN TWAA0007M00 a ON st.SYNT_TEST_MNG_DOM_API_ID = a.MNG_DOM_API_ID
+  WHERE h.MNG_DOM_NODE_ID = :nodeId
+  ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC
   FETCH FIRST :limit ROWS ONLY
 `;
 
@@ -303,17 +318,17 @@ export const SELECT_NODE_TEST_HISTORY = `
  */
 export const SELECT_ALL_TEST_HISTORY = `
   SELECT 
-    h.SYNTHETIC_TEST_HISTORY_ID AS "syntheticTestHistoryId",
-    h.SYNTHETIC_TEST_ID AS "syntheticTestId",
-    h.NODE_ID AS "nodeId",
-    h.STATUS_CODE AS "statusCode",
-    h.SUCCESS AS "success",
-    h.RESPONSE_TIME_MS AS "responseTimeMs",
-    h.EXECUTED_AT AS "executedAt",
-    h.INPUT AS "input",
-    h.OUTPUT AS "output"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  ORDER BY h.EXECUTED_AT DESC
+    h.MNG_DOM_SYNT_TEST_EXE_HIST_ID AS "syntheticTestHistoryId",
+    h.MNG_DOM_SYNT_TEST_ID AS "syntheticTestId",
+    h.MNG_DOM_NODE_ID AS "nodeId",
+    h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE AS "statusCode",
+    h.MNG_DOM_SYNT_TEST_SCS_YN AS "success",
+    h.MNG_DOM_SYNT_TEST_RSP_MLSC AS "responseTimeMs",
+    h.MNG_DOM_SYNT_TEST_EXE_TM AS "executedAt",
+    h.MNG_DOM_SYNT_TEST_INP_CNTT AS "input",
+    h.MNG_DOM_SYNT_TEST_OPRT_CNTT AS "output"
+  FROM TWAA0011H00 h
+  ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC
 `;
 
 /**
@@ -328,21 +343,21 @@ export const SELECT_ALL_TEST_HISTORY = `
  */
 export const SELECT_TEST_HISTORY_WITH_FILTERS = `
   SELECT 
-    h.SYNTHETIC_TEST_HISTORY_ID AS "syntheticTestHistoryId",
-    h.SYNTHETIC_TEST_ID AS "syntheticTestId",
-    h.NODE_ID AS "nodeId",
-    h.STATUS_CODE AS "statusCode",
-    h.SUCCESS AS "success",
-    h.RESPONSE_TIME_MS AS "responseTimeMs",
-    h.EXECUTED_AT AS "executedAt",
-    h.INPUT AS "input",
-    h.OUTPUT AS "output"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  WHERE h.SYNTHETIC_TEST_ID = :syntheticTestId
-    AND (:nodeId IS NULL OR h.NODE_ID = :nodeId)
-    AND (:startDate IS NULL OR h.EXECUTED_AT >= :startDate)
-    AND (:endDate IS NULL OR h.EXECUTED_AT <= :endDate)
-  ORDER BY h.EXECUTED_AT DESC
+    h.MNG_DOM_SYNT_TEST_EXE_HIST_ID AS "syntheticTestHistoryId",
+    h.MNG_DOM_SYNT_TEST_ID AS "syntheticTestId",
+    h.MNG_DOM_NODE_ID AS "nodeId",
+    h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE AS "statusCode",
+    h.MNG_DOM_SYNT_TEST_SCS_YN AS "success",
+    h.MNG_DOM_SYNT_TEST_RSP_MLSC AS "responseTimeMs",
+    h.MNG_DOM_SYNT_TEST_EXE_TM AS "executedAt",
+    h.MNG_DOM_SYNT_TEST_INP_CNTT AS "input",
+    h.MNG_DOM_SYNT_TEST_OPRT_CNTT AS "output"
+  FROM TWAA0011H00 h
+  WHERE h.MNG_DOM_SYNT_TEST_ID = :syntheticTestId
+    AND (:nodeId IS NULL OR h.MNG_DOM_NODE_ID = :nodeId)
+    AND (:startDate IS NULL OR h.MNG_DOM_SYNT_TEST_EXE_TM >= :startDate)
+    AND (:endDate IS NULL OR h.MNG_DOM_SYNT_TEST_EXE_TM <= :endDate)
+  ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC
   FETCH FIRST :limit ROWS ONLY
 `;
 
@@ -353,8 +368,8 @@ export const SELECT_TEST_HISTORY_WITH_FILTERS = `
  * - :syntheticTestHistoryId (NUMBER): 삭제할 이력 ID
  */
 export const DELETE_TEST_HISTORY = `
-  DELETE FROM MT_SYNTHETIC_TEST_HISTORY
-  WHERE SYNTHETIC_TEST_HISTORY_ID = :syntheticTestHistoryId
+  DELETE FROM TWAA0011H00
+  WHERE MNG_DOM_SYNT_TEST_EXE_HIST_ID = :syntheticTestHistoryId
 `;
 
 /**
@@ -364,8 +379,8 @@ export const DELETE_TEST_HISTORY = `
  * - :syntheticTestId (NUMBER): 테스트 ID
  */
 export const DELETE_TEST_HISTORIES_BY_TEST_ID = `
-  DELETE FROM MT_SYNTHETIC_TEST_HISTORY
-  WHERE SYNTHETIC_TEST_ID = :syntheticTestId
+  DELETE FROM TWAA0011H00
+  WHERE MNG_DOM_SYNT_TEST_ID = :syntheticTestId
 `;
 
 /**
@@ -380,14 +395,14 @@ export const DELETE_TEST_HISTORIES_BY_TEST_ID = `
 export const SELECT_TEST_HISTORY_STATS = `
   SELECT 
     COUNT(*) AS "totalCount",
-    SUM(CASE WHEN SUCCESS = 'Y' THEN 1 ELSE 0 END) AS "successCount",
-    SUM(CASE WHEN SUCCESS = 'N' THEN 1 ELSE 0 END) AS "failureCount",
-    ROUND(AVG(RESPONSE_TIME_MS), 2) AS "avgResponseTime",
-    MIN(RESPONSE_TIME_MS) AS "minResponseTime",
-    MAX(RESPONSE_TIME_MS) AS "maxResponseTime"
-  FROM MT_SYNTHETIC_TEST_HISTORY
+    SUM(CASE WHEN MNG_DOM_SYNT_TEST_SCS_YN = 'Y' THEN 1 ELSE 0 END) AS "successCount",
+    SUM(CASE WHEN MNG_DOM_SYNT_TEST_SCS_YN = 'N' THEN 1 ELSE 0 END) AS "failureCount",
+    ROUND(AVG(MNG_DOM_SYNT_TEST_RSP_MLSC), 2) AS "avgResponseTime",
+    MIN(MNG_DOM_SYNT_TEST_RSP_MLSC) AS "minResponseTime",
+    MAX(MNG_DOM_SYNT_TEST_RSP_MLSC) AS "maxResponseTime"
+  FROM TWAA0011H00
   WHERE TEST_ID = :syntheticTestId
-  AND EXECUTED_AT BETWEEN :startDate AND :endDate
+  AND MNG_DOM_SYNT_TEST_EXE_TM BETWEEN :startDate AND :endDate
 `;
 
 /**
@@ -399,9 +414,9 @@ export const SELECT_TEST_HISTORY_STATS = `
  */
 export const CHECK_SYNTHETIC_TEST_NAME_EXISTS = `
   SELECT COUNT(*) AS COUNT
-  FROM MT_SYNTHETIC_TESTS
-  WHERE SYNTHETIC_TEST_NAME = :syntheticTestName
-  AND (:excludeId IS NULL OR SYNTHETIC_TEST_ID != :excludeId)
+  FROM TWAA0009M00
+  WHERE MNG_DOM_SYNT_TEST_NM = :syntheticTestName
+  AND (:excludeId IS NULL OR MNG_DOM_SYNT_TEST_ID != :excludeId)
 `;
 
 /**
@@ -411,8 +426,8 @@ export const CHECK_SYNTHETIC_TEST_NAME_EXISTS = `
  * - :retentionDays (NUMBER): 보관 기간 (일)
  */
 export const DELETE_OLD_TEST_HISTORY = `
-  DELETE FROM MT_SYNTHETIC_TEST_HISTORY
-  WHERE EXECUTED_AT < SYSTIMESTAMP - :retentionDays
+  DELETE FROM TWAA0011H00
+  WHERE MNG_DOM_SYNT_TEST_EXE_TM < SYSTIMESTAMP - :retentionDays
 `;
 
 /**
@@ -425,62 +440,61 @@ export const DELETE_OLD_TEST_HISTORY = `
  */
 export const SELECT_ALERTS = `
   SELECT 
-    st.SYNTHETIC_TEST_ID AS "testId",
-    st.SYNTHETIC_TEST_NAME AS "testName",
-    h.NODE_ID AS "nodeId",
-    n.NODE_NAME AS "nodeName",
-    st.API_ID AS "apiId",
-    a.API_NAME AS "apiName",
-    a.URI AS "apiUri",
-    a.METHOD AS "apiMethod",
-    h.RESPONSE_TIME_MS AS "responseTime",
-    st.ALERT_THRESHOLD_MS AS "threshold",
-    h.EXECUTED_AT AS "timestamp",
-    h.STATUS_CODE AS "statusCode",
-    h.INPUT AS "input"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  INNER JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
-  INNER JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
-  INNER JOIN MT_APIS a ON st.API_ID = a.API_ID
-  WHERE h.EXECUTED_AT >= :startDate
-    AND h.RESPONSE_TIME_MS > st.ALERT_THRESHOLD_MS
-    AND h.STATUS_CODE != '200'
-  ORDER BY h.EXECUTED_AT DESC
+    st.MNG_DOM_SYNT_TEST_ID AS "testId",
+    st.MNG_DOM_SYNT_TEST_NM AS "testName",
+    h.MNG_DOM_NODE_ID AS "nodeId",
+    n.MNG_DOM_NODE_NM AS "nodeName",
+    st.SYNT_TEST_MNG_DOM_API_ID AS "apiId",
+    a.MNG_DOM_API_NM AS "apiName",
+    a.MNG_DOM_API_URL AS "apiUri",
+    a.HTTP_METHD_NM AS "apiMethod",
+    h.MNG_DOM_SYNT_TEST_RSP_MLSC AS "responseTime",
+    st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC AS "threshold",
+    h.MNG_DOM_SYNT_TEST_EXE_TM AS "timestamp",
+    h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE AS "statusCode",
+    h.MNG_DOM_SYNT_TEST_INP_CNTT AS "input"
+  FROM TWAA0011H00 h
+  INNER JOIN TWAA0009M00 st ON h.MNG_DOM_SYNT_TEST_ID = st.MNG_DOM_SYNT_TEST_ID
+  INNER JOIN TWAA0001M00 n ON h.MNG_DOM_NODE_ID = n.MNG_DOM_NODE_ID
+  INNER JOIN TWAA0007M00 a ON st.SYNT_TEST_MNG_DOM_API_ID = a.MNG_DOM_API_ID
+  WHERE h.MNG_DOM_SYNT_TEST_EXE_TM >= :startDate
+    AND h.MNG_DOM_SYNT_TEST_RSP_MLSC > st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC
+    AND h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE != '200'
+  ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC
   FETCH FIRST :limit ROWS ONLY
 `;
 
 export const SEARCH_TEST_HISTORY = `
   SELECT 
-    h.SYNTHETIC_TEST_HISTORY_ID as "syntheticTestHistoryId",
-    h.SYNTHETIC_TEST_ID as "syntheticTestId",
-    h.NODE_ID as "nodeId",
-    h.EXECUTED_AT as "executedAt",
-    h.STATUS_CODE as "statusCode",
-    h.SUCCESS as "success",
-    h.RESPONSE_TIME_MS as "responseTimeMs",
-    h.INPUT as "input",
-    h.OUTPUT as "output",
-    st.SYNTHETIC_TEST_NAME as "syntheticTestName",
-    st.ALERT_THRESHOLD_MS as "alertThresholdMs",
-    st.TAGS as "testTags",
-    n.NODE_NAME as "nodeName",
+    h.MNG_DOM_SYNT_TEST_EXE_HIST_ID as "syntheticTestHistoryId",
+    h.MNG_DOM_SYNT_TEST_ID as "syntheticTestId",
+    h.MNG_DOM_NODE_ID as "nodeId",
+    h.MNG_DOM_SYNT_TEST_EXE_TM as "executedAt",
+    h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE as "statusCode",
+    h.MNG_DOM_SYNT_TEST_SCS_YN as "success",
+    h.MNG_DOM_SYNT_TEST_RSP_MLSC as "responseTimeMs",
+    h.MNG_DOM_SYNT_TEST_INP_CNTT as "input",
+    h.MNG_DOM_SYNT_TEST_OPRT_CNTT as "output",
+    st.MNG_DOM_SYNT_TEST_NM as "syntheticTestName",
+    st.MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC as "alertThresholdMs",
+    n.MNG_DOM_NODE_NM as "nodeName",
     (
-      SELECT ng.NODE_GROUP_NAME 
-      FROM MT_NODE_GROUP_MEMBERS ngm 
-      JOIN MT_NODE_GROUPS ng ON ngm.NODE_GROUP_ID = ng.NODE_GROUP_ID 
-      WHERE ngm.NODE_ID = h.NODE_ID 
+      SELECT ng.SNET_MNG_NODE_GRP_NM 
+      FROM TWAA0005M00 ngm 
+      JOIN TWAA0004M00 ng ON ngm.MNG_DOM_NODE_GRP_ID = ng.MNG_DOM_NODE_GRP_ID 
+      WHERE ngm.MNG_DOM_NODE_ID = h.MNG_DOM_NODE_ID 
       AND ROWNUM = 1
     ) as "nodeGroupName"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  LEFT JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
-  LEFT JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
+  FROM TWAA0011H00 h
+  LEFT JOIN TWAA0009M00 st ON h.MNG_DOM_SYNT_TEST_ID = st.MNG_DOM_SYNT_TEST_ID
+  LEFT JOIN TWAA0001M00 n ON h.MNG_DOM_NODE_ID = n.MNG_DOM_NODE_ID
   WHERE 1=1
 `;
 
 export const SEARCH_TEST_HISTORY_COUNT = `
   SELECT COUNT(*) as "total"
-  FROM MT_SYNTHETIC_TEST_HISTORY h
-  LEFT JOIN MT_SYNTHETIC_TESTS st ON h.SYNTHETIC_TEST_ID = st.SYNTHETIC_TEST_ID
-  LEFT JOIN MT_NODES n ON h.NODE_ID = n.NODE_ID
+  FROM TWAA0011H00 h
+  LEFT JOIN TWAA0009M00 st ON h.MNG_DOM_SYNT_TEST_ID = st.MNG_DOM_SYNT_TEST_ID
+  LEFT JOIN TWAA0001M00 n ON h.MNG_DOM_NODE_ID = n.MNG_DOM_NODE_ID
   WHERE 1=1
 `;

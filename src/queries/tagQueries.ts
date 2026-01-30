@@ -11,30 +11,38 @@ import oracledb from 'oracledb';
  */
 export const SELECT_TAG_BY_NAME = `
   SELECT 
-    TAG_ID AS "tagId",
-    TAG_NAME AS "tagName",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_TAGS
-  WHERE TAG_NAME = :tagName
+    MNG_DOM_TAG_ID AS "tagId",
+    MNG_DOM_TAG_NM AS "tagName",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0003M00
+  WHERE MNG_DOM_TAG_NM = :tagName
 `;
 
 /**
  * 새 태그 생성 (RETURNING INTO 사용)
  */
 export const INSERT_TAG = `
-  INSERT INTO MT_TAGS (
-    TAG_ID,
-    TAG_NAME,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0003M00 (
+    MNG_DOM_TAG_ID,
+    MNG_DOM_TAG_NM,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_TAG_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_TAG_ID),0)+1 FROM TWAA0003M00),
     :tagName,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
-  RETURNING TAG_ID INTO :id
+  RETURNING MNG_DOM_TAG_ID INTO :id
 `;
 
 /**
@@ -52,18 +60,26 @@ export const INSERT_TAG_BINDS = {
  * 노드-태그 관계 생성
  */
 export const INSERT_NODE_TAG_MEMBER = `
-  INSERT INTO MT_NODE_TAG_MEMBERS (
-    NODE_TAG_ID,
-    TAG_ID,
-    NODE_ID,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0002M00 (
+    MNG_DOM_NODE_TAG_MPG_ID,
+    MPG_MNG_DOM_TAG_ID,
+    MPG_MNG_DOM_NODE_ID,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_NODE_TAG_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_NODE_TAG_MPG_ID),0)+1 FROM TWAA0002M00),
     :tagId,
     :nodeId,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
 `;
 
@@ -72,28 +88,28 @@ export const INSERT_NODE_TAG_MEMBER = `
  */
 export const SELECT_NODE_TAGS = `
   SELECT 
-    t.TAG_ID AS "tagId",
-    t.TAG_NAME AS "tagName"
-  FROM MT_TAGS t
-  INNER JOIN MT_NODE_TAG_MEMBERS ntm ON t.TAG_ID = ntm.TAG_ID
-  WHERE ntm.NODE_ID = :nodeId
-  ORDER BY t.TAG_NAME
+    t.MNG_DOM_TAG_ID AS "tagId",
+    t.MNG_DOM_TAG_NM AS "tagName"
+  FROM TWAA0003M00 t
+  INNER JOIN TWAA0002M00 ntm ON t.MNG_DOM_TAG_ID = ntm.MPG_MNG_DOM_TAG_ID
+  WHERE ntm.MPG_MNG_DOM_NODE_ID = :nodeId
+  ORDER BY t.MNG_DOM_TAG_NM
 `;
 
 /**
  * 노드의 모든 태그 관계 삭제 (노드 삭제 시 사용)
  */
 export const DELETE_NODE_TAG_MEMBERS = `
-  DELETE FROM MT_NODE_TAG_MEMBERS
-  WHERE NODE_ID = :nodeId
+  DELETE FROM TWAA0002M00
+  WHERE MPG_MNG_DOM_NODE_ID = :nodeId
 `;
 
 /**
  * 특정 노드의 특정 태그 관계 삭제
  */
 export const DELETE_NODE_TAG_MEMBER = `
-  DELETE FROM MT_NODE_TAG_MEMBERS
-  WHERE NODE_ID = :nodeId AND TAG_ID = :tagId
+  DELETE FROM TWAA0002M00
+  WHERE MPG_MNG_DOM_NODE_ID = :nodeId AND MPG_MNG_DOM_TAG_ID = :tagId
 `;
 
 // ============================================================================
@@ -104,18 +120,26 @@ export const DELETE_NODE_TAG_MEMBER = `
  * API-태그 관계 생성
  */
 export const INSERT_API_TAG_MEMBER = `
-  INSERT INTO MT_API_TAG_MEMBERS (
-    API_TAG_ID,
-    TAG_ID,
-    API_ID,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0008M00 (
+    MNG_DOM_API_TAG_MPG_ID,
+    MPG_MNG_DOM_TAG_ID,
+    MPG_MNG_DOM_API_ID,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_API_TAG_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_API_TAG_MPG_ID),0)+1 FROM TWAA0008M00),
     :tagId,
     :apiId,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
 `;
 
@@ -124,28 +148,28 @@ export const INSERT_API_TAG_MEMBER = `
  */
 export const SELECT_API_TAGS = `
   SELECT 
-    t.TAG_ID AS "tagId",
-    t.TAG_NAME AS "tagName"
-  FROM MT_TAGS t
-  INNER JOIN MT_API_TAG_MEMBERS atm ON t.TAG_ID = atm.TAG_ID
-  WHERE atm.API_ID = :apiId
-  ORDER BY t.TAG_NAME
+    t.MNG_DOM_TAG_ID AS "tagId",
+    t.MNG_DOM_TAG_NM AS "tagName"
+  FROM TWAA0003M00 t
+  INNER JOIN TWAA0008M00 atm ON t.MNG_DOM_TAG_ID = atm.MPG_MNG_DOM_TAG_ID
+  WHERE atm.MPG_MNG_DOM_API_ID = :apiId
+  ORDER BY t.MNG_DOM_TAG_NM
 `;
 
 /**
  * API의 모든 태그 관계 삭제
  */
 export const DELETE_API_TAG_MEMBERS = `
-  DELETE FROM MT_API_TAG_MEMBERS
-  WHERE API_ID = :apiId
+  DELETE FROM TWAA0008M00
+  WHERE MPG_MNG_DOM_API_ID = :apiId
 `;
 
 /**
  * 특정 API의 특정 태그 관계 삭제
  */
 export const DELETE_API_TAG_MEMBER = `
-  DELETE FROM MT_API_TAG_MEMBERS
-  WHERE API_ID = :apiId AND TAG_ID = :tagId
+  DELETE FROM TWAA0008M00
+  WHERE MPG_MNG_DOM_API_ID = :apiId AND MPG_MNG_DOM_TAG_ID = :tagId
 `;
 
 // ============================================================================
@@ -156,18 +180,26 @@ export const DELETE_API_TAG_MEMBER = `
  * Synthetic Test-태그 관계 생성
  */
 export const INSERT_SYNTHETIC_TEST_TAG_MEMBER = `
-  INSERT INTO MT_SYNTHETIC_TEST_TAG_MEMBERS (
-    SYNTHETIC_TAG_ID,
-    TAG_ID,
-    SYNTHETIC_TEST_ID,
-    CREATED_AT,
-    UPDATED_AT
+  INSERT INTO TWAA0010M00 (
+    MNG_DOM_SYNT_TEST_TAG_MPG_ID,
+    MPG_MNG_DOM_TAG_ID,
+    MPG_MNG_DOM_SYNT_TEST_ID,
+    REG_USER_ID,
+    REG_DDTS,
+    CHG_USER_ID,
+    CHG_DDTS,
+    CHG_USER_IP,
+    CHG_GBL_ID
   ) VALUES (
-    SEQ_MT_SYNTHETIC_TAG_ID.NEXTVAL,
+    (SELECT NVL(MAX(MNG_DOM_SYNT_TEST_TAG_MPG_ID),0)+1 FROM TWAA0010M00),
     :tagId,
     :syntheticTestId,
+    'system',
     SYSTIMESTAMP,
-    SYSTIMESTAMP
+    'system',
+    SYSTIMESTAMP,
+    '127.0.0.1',
+    'SYSTEM'
   )
 `;
 
@@ -176,28 +208,28 @@ export const INSERT_SYNTHETIC_TEST_TAG_MEMBER = `
  */
 export const SELECT_SYNTHETIC_TEST_TAGS = `
   SELECT 
-    t.TAG_ID AS "tagId",
-    t.TAG_NAME AS "tagName"
-  FROM MT_TAGS t
-  INNER JOIN MT_SYNTHETIC_TEST_TAG_MEMBERS sttm ON t.TAG_ID = sttm.TAG_ID
-  WHERE sttm.SYNTHETIC_TEST_ID = :syntheticTestId
-  ORDER BY t.TAG_NAME
+    t.MNG_DOM_TAG_ID AS "tagId",
+    t.MNG_DOM_TAG_NM AS "tagName"
+  FROM TWAA0003M00 t
+  INNER JOIN TWAA0010M00 sttm ON t.MNG_DOM_TAG_ID = sttm.MPG_MNG_DOM_TAG_ID
+  WHERE sttm.MPG_MNG_DOM_SYNT_TEST_ID = :syntheticTestId
+  ORDER BY t.MNG_DOM_TAG_NM
 `;
 
 /**
  * Synthetic Test의 모든 태그 관계 삭제
  */
 export const DELETE_SYNTHETIC_TEST_TAG_MEMBERS = `
-  DELETE FROM MT_SYNTHETIC_TEST_TAG_MEMBERS
-  WHERE SYNTHETIC_TEST_ID = :syntheticTestId
+  DELETE FROM TWAA0010M00
+  WHERE MPG_MNG_DOM_SYNT_TEST_ID = :syntheticTestId
 `;
 
 /**
  * 특정 Synthetic Test의 특정 태그 관계 삭제
  */
 export const DELETE_SYNTHETIC_TEST_TAG_MEMBER = `
-  DELETE FROM MT_SYNTHETIC_TEST_TAG_MEMBERS
-  WHERE SYNTHETIC_TEST_ID = :syntheticTestId AND TAG_ID = :tagId
+  DELETE FROM TWAA0010M00
+  WHERE MPG_MNG_DOM_SYNT_TEST_ID = :syntheticTestId AND MPG_MNG_DOM_TAG_ID = :tagId
 `;
 
 // ============================================================================
@@ -209,20 +241,20 @@ export const DELETE_SYNTHETIC_TEST_TAG_MEMBER = `
  */
 export const SELECT_ALL_TAGS = `
   SELECT 
-    TAG_ID AS "tagId",
-    TAG_NAME AS "tagName",
-    CREATED_AT AS "createdAt",
-    UPDATED_AT AS "updatedAt"
-  FROM MT_TAGS
-  ORDER BY TAG_NAME
+    MNG_DOM_TAG_ID AS "tagId",
+    MNG_DOM_TAG_NM AS "tagName",
+    REG_DDTS AS "createdAt",
+    CHG_DDTS AS "updatedAt"
+  FROM TWAA0003M00
+  ORDER BY MNG_DOM_TAG_NM
 `;
 
 /**
  * 태그 삭제
  */
 export const DELETE_TAG = `
-  DELETE FROM MT_TAGS
-  WHERE TAG_ID = :tagId
+  DELETE FROM TWAA0003M00
+  WHERE MNG_DOM_TAG_ID = :tagId
 `;
 
 /**
@@ -232,11 +264,11 @@ export const CHECK_TAG_IN_USE = `
   SELECT 
     CASE 
       WHEN EXISTS (
-        SELECT 1 FROM MT_NODE_TAG_MEMBERS WHERE TAG_ID = :tagId
+        SELECT 1 FROM TWAA0002M00 WHERE MPG_MNG_DOM_TAG_ID = :tagId
       ) OR EXISTS (
-        SELECT 1 FROM MT_API_TAG_MEMBERS WHERE TAG_ID = :tagId
+        SELECT 1 FROM TWAA0008M00 WHERE MPG_MNG_DOM_TAG_ID = :tagId
       ) OR EXISTS (
-        SELECT 1 FROM MT_SYNTHETIC_TEST_TAG_MEMBERS WHERE TAG_ID = :tagId
+        SELECT 1 FROM TWAA0010M00 WHERE MPG_MNG_DOM_TAG_ID = :tagId
       ) THEN 1
       ELSE 0
     END AS "IN_USE"
@@ -247,12 +279,12 @@ export const CHECK_TAG_IN_USE = `
  * 사용되지 않는 태그 삭제 (유지보수용)
  */
 export const DELETE_UNUSED_TAGS = `
-  DELETE FROM MT_TAGS
-  WHERE TAG_ID NOT IN (
-    SELECT DISTINCT TAG_ID FROM MT_NODE_TAG_MEMBERS
+  DELETE FROM TWAA0003M00
+  WHERE MNG_DOM_TAG_ID NOT IN (
+    SELECT DISTINCT MNG_DOM_TAG_ID FROM TWAA0002M00
     UNION
-    SELECT DISTINCT TAG_ID FROM MT_API_TAG_MEMBERS
+    SELECT DISTINCT MNG_DOM_TAG_ID FROM TWAA0008M00
     UNION
-    SELECT DISTINCT TAG_ID FROM MT_SYNTHETIC_TEST_TAG_MEMBERS
+    SELECT DISTINCT MNG_DOM_TAG_ID FROM TWAA0010M00
   )
 `;
