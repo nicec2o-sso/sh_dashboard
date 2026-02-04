@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiServiceDB } from '@/services/apiService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * GET /api/apis
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const clientIp = getClientIP(request);
 
     // 서비스 호출로 API 생성
     try {
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) {
         method: body.method,
         tags: body.tags,
         parameters: body.parameters,
+        clientIp,
       });
 
       return NextResponse.json(

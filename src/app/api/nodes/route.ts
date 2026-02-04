@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { NodeServiceDB } from '@/services/nodeService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * GET /api/nodes
@@ -46,7 +47,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('[Node Route] Creating node:', body);
+    const clientIp = getClientIP(request);
+    console.log('[Node Route] Creating node:', body, 'from IP:', clientIp);
 
     // 서비스 호출로 노드 생성
     try {
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
         nodeStatus: body.nodeStatus,
         nodeDesc: body.nodeDesc,
         tags: body.tags,
+        clientIp,
       });
 
       return NextResponse.json(

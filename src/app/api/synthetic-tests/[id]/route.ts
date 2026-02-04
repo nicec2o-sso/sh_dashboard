@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SyntheticTestServiceDB } from '@/services/syntheticTestService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * GET /api/synthetic-tests/[id]
@@ -64,9 +65,10 @@ export async function PUT(
   try {
     const contextParams = await context.params;
     const body = await request.json();
+    const clientIp = getClientIP(request);
     const syntheticTestId = parseInt(contextParams.id);
     
-    console.log('[SyntheticTest Route] Updating test:', contextParams.id, body);
+    console.log('[SyntheticTest Route] Updating test:', contextParams.id, body, 'from IP:', clientIp);
 
     // 서비스 호출로 합성 테스트 수정
     try {
@@ -79,6 +81,7 @@ export async function PUT(
         intervalSeconds: body.intervalSeconds,
         alertThresholdMs: body.alertThresholdMs,
         syntheticTestEnabled: body.syntheticTestEnabled,
+        clientIp,
       });
 
       return NextResponse.json({

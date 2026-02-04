@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiServiceDB } from '@/services/apiService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * GET /api/apis/[id]
@@ -62,9 +63,10 @@ export async function PUT(
   try {
     const contextParams = await context.params;
     const body = await request.json();
+    const clientIp = getClientIP(request);
     const apiId = parseInt(contextParams.id);
     
-    console.log('[API Route] Updating API:', contextParams.id, body);
+    console.log('[API Route] Updating API:', contextParams.id, body, 'from IP:', clientIp);
 
     // 서비스 호출로 API 수정
     try {
@@ -74,6 +76,7 @@ export async function PUT(
         method: body.method,
         tags: body.tags,
         parameters: body.parameters,
+        clientIp,
       });
 
       return NextResponse.json({

@@ -33,6 +33,7 @@ export interface CreateApiInput {
   uri: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   tags?: string;
+  clientIp: string;
   parameters?: Array<{
     apiParameterName: string;
     apiParameterType: 'query' | 'body';
@@ -46,6 +47,7 @@ export interface UpdateApiInput {
   uri?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   tags?: string;
+  clientIp: string;
   parameters?: Array<{
     apiParameterName: string;
     apiParameterType: 'query' | 'body';
@@ -189,6 +191,7 @@ export class ApiServiceDB {
             apiName: data.apiName,
             uri: data.uri,
             method: data.method.toUpperCase(),
+            clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
           { autoCommit: true }
@@ -218,6 +221,7 @@ export class ApiServiceDB {
                 apiParameterType: param.apiParameterType,
                 apiParameterRequired: param.apiParameterRequired,
                 apiParameterDesc: param.apiParameterDesc || null,
+                clientIp: data.clientIp,
                 id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
               },
               { autoCommit: true }
@@ -286,6 +290,7 @@ export class ApiServiceDB {
               apiName: data.apiName || existingApi.apiName,
               uri: data.uri || existingApi.uri,
               method: (data.method || existingApi.method).toUpperCase(),
+              clientIp: data.clientIp,
               updatedId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
             { autoCommit: true }
@@ -320,6 +325,7 @@ export class ApiServiceDB {
                 apiParameterType: param.apiParameterType,
                 apiParameterRequired: param.apiParameterRequired,
                 apiParameterDesc: param.apiParameterDesc || null,
+                clientIp: data.clientIp,
                 id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
               },
               { autoCommit: true }

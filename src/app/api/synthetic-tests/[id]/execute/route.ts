@@ -4,6 +4,7 @@ import { SyntheticTestServiceDB } from '@/services/syntheticTestService.database
 import { NodeServiceDB } from '@/services/nodeService.database';
 import { NodeGroupServiceDB } from '@/services/nodeGroupService.database';
 import { ApiServiceDB } from '@/services/apiService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * POST /api/synthetic-tests/[id]/execute - 합성 테스트 실행
@@ -14,6 +15,7 @@ export async function POST(
 ) {
   try {
     const id = parseInt((await context.params).id, 10);
+    const clientIp = getClientIP(request);
     let body = await request.json();
     if(!body) {
       body = {};
@@ -75,7 +77,8 @@ export async function POST(
           success: result.success ? 'Y' : 'N',
           responseTimeMs: result.responseTimeMs || 0,
           input: JSON.stringify(body || {}),
-          output: JSON.stringify(result.data || {})
+          output: JSON.stringify(result.data || {}),
+          clientIp,
         });
 
         results.push(result);
@@ -90,7 +93,8 @@ export async function POST(
           success: 'N',
           responseTimeMs: 0,
           input: JSON.stringify(body || {}),
-          output: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' })
+          output: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+          clientIp,
         });
 
         results.push({

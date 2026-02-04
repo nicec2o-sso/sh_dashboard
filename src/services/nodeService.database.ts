@@ -42,6 +42,7 @@ export interface CreateNodeInput {
   nodeStatus?: string;
   nodeDesc?: string;
   tags?: string;
+  clientIp: string;
 }
 
 export interface UpdateNodeInput {
@@ -51,6 +52,7 @@ export interface UpdateNodeInput {
   nodeStatus?: string;
   nodeDesc?: string;
   tags?: string;
+  clientIp: string;
 }
 
 export class NodeServiceDB {
@@ -159,6 +161,7 @@ export class NodeServiceDB {
             host: data.host,
             port: data.port,
             nodeStatus: data.nodeStatus || 'a',
+            clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
           { autoCommit: true }
@@ -232,6 +235,7 @@ export class NodeServiceDB {
             host: data.host || existingNode.host,
             port: data.port !== undefined ? data.port : existingNode.port,
             nodeStatus: data.nodeStatus || existingNode.nodeStatus,
+            clientIp: data.clientIp,
             //nodeDesc: data.nodeDesc !== undefined ? data.nodeDesc : existingNode.nodeDesc,
             updatedId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },

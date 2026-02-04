@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { SyntheticTestServiceDB } from '@/services/syntheticTestService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * GET /api/synthetic-tests
@@ -46,7 +47,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('[SyntheticTest Route] Creating synthetic test:', body);
+    const clientIp = getClientIP(request);
+    console.log('[SyntheticTest Route] Creating synthetic test:', body, 'from IP:', clientIp);
 
     // 서비스 호출로 합성 테스트 생성
     try {
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest) {
         alertThresholdMs: body.alertThresholdMs,
         syntheticTestEnabled: body.syntheticTestEnabled,
         tags: body.tags,
+        clientIp,
       });
 
       return NextResponse.json(

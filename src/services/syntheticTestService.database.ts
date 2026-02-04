@@ -103,6 +103,7 @@ export interface CreateSyntheticTestInput {
   alertThresholdMs: number;
   tags?: string;
   syntheticTestEnabled?: 'Y' | 'N';
+  clientIp: string;
 }
 
 export interface UpdateSyntheticTestInput {
@@ -114,6 +115,7 @@ export interface UpdateSyntheticTestInput {
   alertThresholdMs?: number;
   tags?: string;
   syntheticTestEnabled?: 'Y' | 'N';
+  clientIp: string;
 }
 
 export interface CreateTestHistoryInput {
@@ -124,6 +126,7 @@ export interface CreateTestHistoryInput {
   responseTimeMs: number;
   input?: string;
   output?: string;
+  clientIp: string;
 }
 
 export class SyntheticTestServiceDB {
@@ -208,6 +211,7 @@ export class SyntheticTestServiceDB {
             alertThresholdMs: data.alertThresholdMs,
             // tags: data.tags,
             syntheticTestEnabled: data.syntheticTestEnabled || 'Y',
+            clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
           { autoCommit: true }
@@ -279,6 +283,7 @@ export class SyntheticTestServiceDB {
               ? data.alertThresholdMs 
               : existingTest.alertThresholdMs,
             syntheticTestEnabled: data.syntheticTestEnabled || existingTest.syntheticTestEnabled,
+            clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
           { autoCommit: true }
@@ -381,6 +386,7 @@ export class SyntheticTestServiceDB {
             responseTimeMs: data.responseTimeMs,
             input: data.input || null,
             output: data.output || null,
+            clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
           { autoCommit: true }

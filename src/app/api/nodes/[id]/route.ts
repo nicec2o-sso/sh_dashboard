@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { NodeServiceDB } from '@/services/nodeService.database';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * GET /api/nodes/[id]
@@ -64,9 +65,10 @@ export async function PUT(
   try {
     const contextParams = await context.params;
     const body = await request.json();
+    const clientIp = getClientIP(request);
     const nodeId = parseInt(contextParams.id);
     
-    console.log('[Node Route] Updating node:', contextParams.id, body);
+    console.log('[Node Route] Updating node:', contextParams.id, body, 'from IP:', clientIp);
 
     // 서비스 호출로 노드 수정
     try {
@@ -77,6 +79,7 @@ export async function PUT(
         nodeStatus: body.nodeStatus,
         nodeDesc: body.nodeDesc,
         tags: body.tags,
+        clientIp,
       });
 
       return NextResponse.json({

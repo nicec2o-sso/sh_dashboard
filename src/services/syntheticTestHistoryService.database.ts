@@ -32,6 +32,7 @@ export interface CreateTestHistoryInput {
   responseTimeMs: number;
   input: string;
   output?: string;
+  clientIp: string;
 }
 
 // TestHistoryRow는 이제 types에서 SyntheticTestHistoryRow로 import
@@ -103,6 +104,7 @@ export class SyntheticTestHistoryServiceDB {
             responseTimeMs: data.responseTimeMs,
             input: data.input,
             output: data.output || null,
+            clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
           { autoCommit: true }

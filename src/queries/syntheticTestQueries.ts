@@ -154,7 +154,7 @@ export const INSERT_SYNTHETIC_TEST = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_SYNT_TEST_ID INTO :id
@@ -194,6 +194,7 @@ export const UPDATE_SYNTHETIC_TEST = `
     SYNT_TEST_EXE_INTV_TIME_HMS = :intervalSeconds,
     MNG_DOM_SYNT_TEST_ALT_CRTL_MLSC = :alertThresholdMs,
     MNG_DOM_SYNT_TEST_VTLT_YN = :syntheticTestEnabled,
+    CHG_USER_IP = :clientIp,
     CHG_DDTS = SYSTIMESTAMP
   WHERE MNG_DOM_SYNT_TEST_ID = :syntheticTestId
   RETURNING MNG_DOM_SYNT_TEST_ID INTO :id
@@ -280,7 +281,7 @@ export const INSERT_TEST_HISTORY = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_SYNT_TEST_EXE_HIST_ID INTO :id

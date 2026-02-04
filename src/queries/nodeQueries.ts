@@ -227,7 +227,7 @@ export const INSERT_NODE = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_NODE_ID INTO :id
@@ -254,6 +254,7 @@ export const UPDATE_NODE = `
     MNG_DOM_NODE_HST_IP = :host,
     MNG_DOM_NODE_HST_PORT_NO = :port,
     MNG_DOM_NODE_STAT_TYP_CODE = :nodeStatus,
+    CHG_USER_IP = :clientIp,
     CHG_DDTS = SYSTIMESTAMP
   WHERE MNG_DOM_NODE_ID = :nodeId
   RETURNING MNG_DOM_NODE_ID INTO :updatedId

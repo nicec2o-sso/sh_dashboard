@@ -137,7 +137,7 @@ export const INSERT_API = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_API_ID INTO :id
@@ -159,6 +159,7 @@ export const UPDATE_API = `
     MNG_DOM_API_NM = :apiName,
     MNG_DOM_API_URL = :uri,
     HTTP_METHD_NM = :method,
+    CHG_USER_IP = :clientIp,
     CHG_DDTS = SYSTIMESTAMP
   WHERE MNG_DOM_API_ID = :apiId
   RETURNING MNG_DOM_API_ID INTO :updatedId
@@ -207,7 +208,7 @@ export const INSERT_API_PARAMETER = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_API_INP_ID INTO :id
