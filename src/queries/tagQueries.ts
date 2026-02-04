@@ -39,7 +39,7 @@ export const INSERT_TAG = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_TAG_ID INTO :id
@@ -78,7 +78,7 @@ export const INSERT_NODE_TAG_MEMBER = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
 `;
@@ -138,7 +138,7 @@ export const INSERT_API_TAG_MEMBER = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
 `;
@@ -198,7 +198,7 @@ export const INSERT_SYNTHETIC_TEST_TAG_MEMBER = `
     SYSTIMESTAMP,
     'system',
     SYSTIMESTAMP,
-    '127.0.0.1',
+    :clientIp,
     REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
 `;

@@ -357,7 +357,7 @@ export function TestHistoryDetail({ initialTestId }: TestHistoryDetailProps = {}
                         }`}
                       >
                         <td className="p-3 text-sm">
-                          {new Date(history.executedAt).toLocaleString('ko-KR')}
+                          {history.executedAt}
                         </td>
                         <td className="p-3 text-sm font-medium">
                           {history.syntheticTestName}

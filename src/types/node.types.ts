@@ -24,7 +24,7 @@ export interface Node {
   nodeName: string;
   host: string;
   port: number;
-  nodeStatus: 'a' | 'i' | 'w' | 'e';
+  nodeStatus: '1' | '0';
   nodeDesc?: string;
   tags?: string; // 태그 문자열 (콤마로 구분)
   createdAt?: string;
@@ -45,7 +45,7 @@ export interface CreateNodeDto {
   nodeName: string;
   host: string;
   port: number;
-  nodeStatus?: 'a' | 'i' | 'w' | 'e';
+  nodeStatus?: '1' | '0';
   nodeDesc?: string;
   tags?: string; // 태그 문자열 추가
 }
@@ -65,7 +65,7 @@ export interface UpdateNodeDto {
   nodeName?: string;
   host?: string;
   port?: number;
-  nodeStatus?: 'a' | 'i' | 'w' | 'e';
+  nodeStatus?: '1' | '0';
   nodeDesc?: string;
   tags?: string; // 태그 문자열 추가
 }

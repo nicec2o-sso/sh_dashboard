@@ -508,7 +508,9 @@ export const SEARCH_TEST_HISTORY = `
     h.MNG_DOM_SYNT_TEST_EXE_HIST_ID as "syntheticTestHistoryId",
     h.MNG_DOM_SYNT_TEST_ID as "syntheticTestId",
     h.MNG_DOM_NODE_ID as "nodeId",
-    h.MNG_DOM_SYNT_TEST_EXE_TM as "executedAt",
+    CASE WHEN h.MNG_DOM_SYNT_TEST_EXE_TM IS NULL THEN NULL
+         ELSE SUBSTR(h.MNG_DOM_SYNT_TEST_EXE_TM, 1, 2)||':'||SUBSTR(h.MNG_DOM_SYNT_TEST_EXE_TM, 3, 2)||':'||SUBSTR(h.MNG_DOM_SYNT_TEST_EXE_TM, 5, 2)
+    END AS "executedAt",
     h.MNG_DOM_SYNT_TEST_HTTP_RSP_CODE as "statusCode",
     h.MNG_DOM_SYNT_TEST_SCS_YN as "success",
     h.MNG_DOM_SYNT_TEST_RSP_MLSC as "responseTimeMs",

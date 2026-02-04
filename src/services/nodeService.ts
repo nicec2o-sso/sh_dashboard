@@ -38,7 +38,7 @@ export class NodeService {
       nodeName: dto.nodeName,
       host: dto.host,
       port: dto.port,
-      nodeStatus: 'a',
+      nodeStatus: '1',
       createdAt: new Date().toISOString(),
     };
     nodes.push(newNode);
@@ -77,7 +77,7 @@ export class NodeService {
   /**
    * 노드 상태 업데이트
    */
-  static updateNodeStatus(nodeId: number, nodeStatus: 'a' | 'i' | 'w' | 'e'): Node | null {
+  static updateNodeStatus(nodeId: number, nodeStatus: '1' | '0'): Node | null {
     console.log('NodeService updateNodeStatus called with id:', nodeId, 'status:', nodeStatus);
     return this.updateNode(nodeId, { nodeStatus });
   }
@@ -93,7 +93,7 @@ export class NodeService {
 
     // 시뮬레이션: 90% 확률로 성공
     const isHealthy = Math.random() > 0.1;
-    const newStatus = isHealthy ? 'active' : 'error';
+    const newStatus = isHealthy ? '1' : '0';
     this.updateNodeStatus(nodeId, newStatus);
     
     return newStatus;
@@ -110,7 +110,7 @@ export class NodeService {
   /**
    * 상태별 노드 조회
    */
-  static getNodesByStatus(nodeStatus: 'a' | 'i' | 'w' | 'e'): Node[] {
+  static getNodesByStatus(nodeStatus: '1' | '0'): Node[] {
     return nodes.filter(node => node.nodeStatus === nodeStatus);
   }
 }

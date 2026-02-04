@@ -816,9 +816,9 @@ export function SyntheticTestPanel() {
                       
                       {isExpanded && (
                         <CardContent className="space-y-4">
-                          {targetNodes.map((node) => (
+                          {targetNodes.map((node, nodeIndex) => (
                             <SyntheticTestResults 
-                              key={`${test.syntheticTestId}-${node.nodeId}`}
+                              key={`test-${test.syntheticTestId}-node-${node.nodeId}-idx-${nodeIndex}`}
                               syntheticTestId={test.syntheticTestId}
                               nodeId={node.nodeId}
                               nodeName={node.nodeName}

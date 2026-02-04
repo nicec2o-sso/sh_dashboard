@@ -78,9 +78,9 @@ export function Pagination({
             const showEllipsis = prevPage && page - prevPage > 1;
 
             return (
-              <React.Fragment key={page}>
+              <React.Fragment key={`page-${page}`}>
                 {showEllipsis && (
-                  <span className="px-2 text-gray-400 text-sm">...</span>
+                  <span key={`ellipsis-${page}`} className="px-2 text-gray-400 text-sm">...</span>
                 )}
                 <Button
                   variant={currentPage === page ? 'default' : 'outline'}

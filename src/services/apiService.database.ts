@@ -307,7 +307,7 @@ export class ApiServiceDB {
           await conn.execute(DELETE_API_TAG_MEMBERS, { apiId }, { autoCommit: true });
 
           if (data.tags && data.tags.trim()) {
-            await this.processApiTagsInTransaction(conn, apiId, data.tags);
+            await this.processApiTagsInTransaction(conn, apiId, data.tags,data.clientIp);
           }
         }
 
@@ -384,7 +384,8 @@ export class ApiServiceDB {
   private static async processApiTagsInTransaction(
     conn: any,
     apiId: number,
-    tagsString: string
+    tagsString: string,
+    clientIp: string
   ): Promise<void> {
     const tagNames = tagsString
       .split(',')
@@ -407,11 +408,12 @@ export class ApiServiceDB {
           tagId = (existingTagResult.rows[0] as any).tagId;
         } else {
           // 2. 새 태그 생성
-          console.log(`INSERT_TAG : `,INSERT_TAG,tagName);
+          console.log(`INSERT_TAG : `,INSERT_TAG,tagName,clientIp);
           const insertTagResult = await conn.execute(
             INSERT_TAG,
             {
               tagName,
+              clientIp,
               id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
             { autoCommit: true }
@@ -425,10 +427,10 @@ export class ApiServiceDB {
 
         // 3. API-태그 관계 생성
         try {
-          console.log(`INSERT_API_TAG_MEMBER : `,INSERT_API_TAG_MEMBER,tagId, apiId);
+          console.log(`INSERT_API_TAG_MEMBER : `,INSERT_API_TAG_MEMBER,tagId, apiId,clientIp);
           await conn.execute(
             INSERT_API_TAG_MEMBER,
-            { tagId, apiId },
+            { tagId, apiId, clientIp },
             { autoCommit: true }
           );
           

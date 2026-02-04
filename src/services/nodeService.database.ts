@@ -160,7 +160,7 @@ export class NodeServiceDB {
             nodeName: data.nodeName,
             host: data.host,
             port: data.port,
-            nodeStatus: data.nodeStatus || 'a',
+            nodeStatus: data.nodeStatus || '1',
             clientIp: data.clientIp,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
@@ -176,7 +176,7 @@ export class NodeServiceDB {
 
         // 2. 태그 처리
         if (data.tags && data.tags.trim()) {
-          await this.processNodeTagsInTransaction(conn, nodeId, data.tags);
+          await this.processNodeTagsInTransaction(conn, nodeId, data.tags,data.clientIp);
         }
 
         return nodeId;
@@ -310,7 +310,8 @@ export class NodeServiceDB {
   private static async processNodeTagsInTransaction(
     conn: any,
     nodeId: number,
-    tagsString: string
+    tagsString: string,
+    clientIp: string
   ): Promise<void> {
     const tagNames = tagsString
       .split(',')
@@ -331,11 +332,12 @@ export class NodeServiceDB {
         if (existingTagResult.rows && existingTagResult.rows.length > 0) {
           tagId = (existingTagResult.rows[0] as any).tagId;
         } else {
-          console.log(`INSERT_TAG : `,INSERT_TAG,tagName);
+          console.log(`INSERT_TAG : `,INSERT_TAG,tagName,clientIp);
           const insertTagResult = await conn.execute(
             INSERT_TAG,
             {
               tagName,
+              clientIp,
               id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
             { autoCommit: true }
@@ -348,10 +350,10 @@ export class NodeServiceDB {
         }
 
         try {
-          console.log(`INSERT_NODE_TAG_MEMBER : `,INSERT_NODE_TAG_MEMBER,tagName);
+          console.log(`INSERT_NODE_TAG_MEMBER : `,INSERT_NODE_TAG_MEMBER,tagName,tagId, nodeId,clientIp);
           await conn.execute(
             INSERT_NODE_TAG_MEMBER,
-            { tagId, nodeId },
+            { tagId, nodeId, clientIp },
             { autoCommit: true }
           );
         } catch (err) {

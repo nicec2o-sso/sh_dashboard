@@ -440,7 +440,7 @@ export function NodeGroupManagement() {
                         <Label className="text-sm font-semibold">포함된 노드 목록</Label>
                         <div className="grid gap-2">
                           {groupNodes.map((node) => (
-                            <div key={node.nodeId} className="p-3 border rounded bg-gray-50">
+                            <div key={`active-${node.nodeId}`} className="p-3 border rounded bg-gray-50">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
@@ -458,7 +458,7 @@ export function NodeGroupManagement() {
                             </div>
                           ))}
                           {group.nodeIds.filter(nodeGroupId => !groupNodes.find(n => n.nodeId === nodeGroupId)).map((nodeId) => (
-                            <div key={nodeId} className="p-3 border border-red-200 rounded bg-red-50">
+                            <div key={`deleted-${nodeId}`} className="p-3 border border-red-200 rounded bg-red-50">
                               <div className="flex items-center gap-2">
                                 <Badge variant="destructive" className="text-xs font-mono">
                                   ID: {nodeId}

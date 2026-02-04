@@ -295,7 +295,7 @@ export class SyntheticTestServiceDB {
           await conn.execute(DELETE_SYNTHETIC_TEST_TAG_MEMBERS, { syntheticTestId }, { autoCommit: true });
 
           if (data.tags && data.tags.trim()) {
-            await this.processSyntheticTagsInTransaction(conn, syntheticTestId, data.tags);
+            await this.processSyntheticTagsInTransaction(conn, syntheticTestId, data.tags, data.clientIp);
           }
         }
 
@@ -435,7 +435,8 @@ export class SyntheticTestServiceDB {
   private static async processSyntheticTagsInTransaction(
     conn: any,
     syntheticTestId: number,
-    tagsString: string
+    tagsString: string,
+    clientIp: string
   ): Promise<void> {
     const tagNames = tagsString
       .split(',')
@@ -458,11 +459,12 @@ export class SyntheticTestServiceDB {
           tagId = (existingTagResult.rows[0] as any).tagId;
         } else {
           // 2. 새 태그 생성
-          console.log(`INSERT_TAG : `,INSERT_TAG,tagName);
+          console.log(`INSERT_TAG : `,INSERT_TAG,tagName,clientIp);
           const insertTagResult = await conn.execute(
             INSERT_TAG,
             {
               tagName,
+              clientIp,
               id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
             { autoCommit: true }
@@ -476,10 +478,10 @@ export class SyntheticTestServiceDB {
 
         // 3. API-태그 관계 생성
         try {
-          console.log(`INSERT_SYNTHETIC_TEST_TAG_MEMBER : `,INSERT_SYNTHETIC_TEST_TAG_MEMBER,tagId, syntheticTestId);
+          console.log(`INSERT_SYNTHETIC_TEST_TAG_MEMBER : `,INSERT_SYNTHETIC_TEST_TAG_MEMBER,tagId, syntheticTestId,clientIp);
           await conn.execute(
             INSERT_SYNTHETIC_TEST_TAG_MEMBER,
-            { tagId, syntheticTestId },
+            { tagId, syntheticTestId, clientIp },
             { autoCommit: true }
           );
           

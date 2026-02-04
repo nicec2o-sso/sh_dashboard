@@ -445,7 +445,7 @@ export function NodeManagement() {
                       </Badge>
                       <CardTitle className="text-lg">{node.nodeName}</CardTitle>
                       {node.nodeStatus && (
-                        <Badge variant={node.nodeStatus === 'a' ? 'default' : 'destructive'}>
+                        <Badge variant={node.nodeStatus === '1' ? 'default' : 'destructive'}>
                           {node.nodeStatus}
                         </Badge>
                       )}
