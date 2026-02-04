@@ -158,11 +158,10 @@ export class NodeServiceDB {
             nodeName: data.nodeName,
             host: data.host,
             port: data.port,
-            nodeStatus: data.nodeStatus || 'active',
-            nodeDesc: data.nodeDesc || null,
+            nodeStatus: data.nodeStatus || 'a',
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const nodeId = insertResult.outBinds?.id?.[0];
@@ -233,10 +232,10 @@ export class NodeServiceDB {
             host: data.host || existingNode.host,
             port: data.port !== undefined ? data.port : existingNode.port,
             nodeStatus: data.nodeStatus || existingNode.nodeStatus,
-            nodeDesc: data.nodeDesc !== undefined ? data.nodeDesc : existingNode.nodeDesc,
+            //nodeDesc: data.nodeDesc !== undefined ? data.nodeDesc : existingNode.nodeDesc,
             updatedId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const updatedId = updateResult.outBinds?.updatedId?.[0];
@@ -320,7 +319,7 @@ export class NodeServiceDB {
         const existingTagResult = await conn.execute(
           SELECT_TAG_BY_NAME,
           { tagName },
-          { autoCommit: false, outFormat: oracledb.OUT_FORMAT_OBJECT }
+          { autoCommit: true, outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
         let tagId: number;
@@ -335,7 +334,7 @@ export class NodeServiceDB {
               tagName,
               id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
-            { autoCommit: false }
+            { autoCommit: true }
           );
 
           tagId = insertTagResult.outBinds?.id?.[0];
@@ -349,7 +348,7 @@ export class NodeServiceDB {
           await conn.execute(
             INSERT_NODE_TAG_MEMBER,
             { tagId, nodeId },
-            { autoCommit: false }
+            { autoCommit: true }
           );
         } catch (err) {
           if (err instanceof Error && !err.message.includes('ORA-00001')) {

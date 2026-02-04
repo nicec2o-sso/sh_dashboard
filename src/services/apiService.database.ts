@@ -191,7 +191,7 @@ export class ApiServiceDB {
             method: data.method.toUpperCase(),
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const apiId = insertResult.outBinds?.id?.[0];

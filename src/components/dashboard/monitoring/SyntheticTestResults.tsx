@@ -3,9 +3,9 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, AlertTriangle, Play, Server, FileText } from 'lucide-react';
 import { SyntheticTest, NodeGroup, Api, Node, SyntheticTestHistory } from '@/types';
+import { useRouter } from 'next/navigation';
 import { 
   LineChart, 
   Line, 
@@ -54,6 +54,8 @@ export function SyntheticTestResults({
   onNodeClick,
   timeRange = 'all' // ✅ [추가] 기본값 'all'
 }: SyntheticTestResultsProps) {
+  const router = useRouter();
+  
   // 로딩 상태 및 에러
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +64,6 @@ export function SyntheticTestResults({
   const [test, setTest] = useState<SyntheticTest | null>(null);
   const [api, setApi] = useState<Api | null>(null);
   const [history, setHistory] = useState<SyntheticTestHistory[]>([]);
-  
-  // ✅ [추가] 상세 보기 다이얼로그 상태
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   // SyntheticTest, Api, History 데이터를 동시에 로드하는 함수
   const fetchData = useCallback(async () => {
@@ -204,6 +203,25 @@ export function SyntheticTestResults({
     return { stats, chartData };
   }, [filteredHistory, test]);
 
+  // ✅ 상세보기 버튼 클릭 핸들러
+  const handleViewDetail = () => {
+    // 쿼리 파라미터로 tab, syntheticTestId, nodeId 전달
+    const params = new URLSearchParams({
+      tab: 'test-history',
+      syntheticTestId: syntheticTestId.toString(),
+    });
+    
+    if (nodeId) {
+      params.append('nodeId', nodeId.toString());
+    }
+    
+    if (nodeName) {
+      params.append('nodeName', nodeName);
+    }
+    
+    router.push(`/?${params.toString()}`);
+  };
+
   // ------------------------------------
   // Render
   // ------------------------------------
@@ -266,11 +284,11 @@ export function SyntheticTestResults({
             </CardDescription>
           </div>
           <div className="flex flex-col items-end gap-2 min-w-[100px]">
-            {/* ✅ [추가] 상세 보기 버튼 */}
+            {/* ✅ 상세 보기 버튼 - TestHistoryDetail 페이지로 이동 */}
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setIsDetailDialogOpen(true)}
+              onClick={handleViewDetail}
               disabled={filteredHistory.length === 0}
             >
               <FileText className="w-4 h-4 mr-2" />
@@ -345,112 +363,6 @@ export function SyntheticTestResults({
           </div>
         </div>
       </CardContent>
-
-      {/* ✅ [추가] 상세 보기 다이얼로그 */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>실행 기록 상세 보기</DialogTitle>
-            <DialogDescription>
-              {nodeName ? `노드: ${nodeName} | ` : ''}
-              총 {filteredHistory.length}개의 실행 기록
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            {filteredHistory.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                선택한 시간 범위에 실행 기록이 없습니다.
-              </div>
-            ) : (
-              filteredHistory.slice(0, 20).map((item, index) => (
-                <Card 
-                  key={`${item.syntheticTestHistoryId || index}`}
-                  className="border-l-4"
-                  style={{ 
-                    borderLeftColor: item.success ? '#10b981' : '#ef4444' 
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={item.success ? 'default' : 'destructive'}>
-                            {item.success ? 'SUCCESS' : 'FAILED'}
-                          </Badge>
-                          <Badge variant="outline">
-                            {item.responseTimeMs}ms
-                          </Badge>
-                          {item.responseTimeMs > test.alertThresholdMs && (
-                            <Badge variant="destructive" className="flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              알럿
-                            </Badge>
-                          )}
-                        </div>
-                        <CardDescription className="mt-1">
-                          {new Date(item.executedAt).toLocaleString('ko-KR', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                          })}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-3">
-                    {/* Request Data (Input) */}
-                    {item.input && (
-                      <div>
-                        <div className="text-sm font-semibold mb-1 flex items-center gap-2">
-                          <span className="text-blue-600">📤 요청 데이터 (Input)</span>
-                        </div>
-                        <pre className="bg-gray-50 dark:bg-gray-900 p-3 rounded text-xs overflow-auto max-h-40 border">
-                          {JSON.stringify(item.input, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-
-                    {/* Response Data (Output) */}
-                    {item.output && (
-                      <div>
-                        <div className="text-sm font-semibold mb-1 flex items-center gap-2">
-                          <span className="text-green-600">📥 응답 데이터 (Output)</span>
-                        </div>
-                        <pre className="bg-gray-50 dark:bg-gray-900 p-3 rounded text-xs overflow-auto max-h-40 border">
-                          {JSON.stringify(item.output, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-
-                    {/* Error Message (if failed) */}
-                    {!item.success && item.errorMessage && (
-                      <div>
-                        <div className="text-sm font-semibold mb-1 flex items-center gap-2">
-                          <span className="text-red-600">❌ 에러 메시지</span>
-                        </div>
-                        <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded text-xs border border-red-200 dark:border-red-800">
-                          {item.errorMessage}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-
-            {filteredHistory.length > 20 && (
-              <div className="text-center text-sm text-gray-500 py-4">
-                최근 20개의 실행 기록만 표시됩니다. (총 {filteredHistory.length}개)
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

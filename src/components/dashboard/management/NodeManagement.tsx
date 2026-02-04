@@ -383,15 +383,6 @@ export function NodeManagement() {
               </p>
             </div>
 
-            <div>
-              <Label>설명</Label>
-              <Input
-                value={newNode.nodeDesc}
-                onChange={(e) => setNewNode({ ...newNode, nodeDesc: e.target.value })}
-                placeholder="노드에 대한 설명 (선택사항)"
-              />
-            </div>
-
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -454,7 +445,7 @@ export function NodeManagement() {
                       </Badge>
                       <CardTitle className="text-lg">{node.nodeName}</CardTitle>
                       {node.nodeStatus && (
-                        <Badge variant={node.nodeStatus === 'active' ? 'default' : 'destructive'}>
+                        <Badge variant={node.nodeStatus === 'a' ? 'default' : 'destructive'}>
                           {node.nodeStatus}
                         </Badge>
                       )}

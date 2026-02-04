@@ -158,7 +158,7 @@ export class NodeGroupServiceDB {
             nodeGroupDesc: data.nodeGroupDesc || null,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const nodeGroupId = insertResult.outBinds?.id?.[0];
@@ -175,7 +175,7 @@ export class NodeGroupServiceDB {
             await conn.execute(
               INSERT_NODE_GROUP_MEMBER,
               { nodeGroupId, nodeId },
-              { autoCommit: false }
+              { autoCommit: true }
             );
           }
           console.log('[NodeGroupService] Node members added:', data.nodeIds.length);
@@ -234,7 +234,7 @@ export class NodeGroupServiceDB {
                 : existingGroup.nodeGroupDesc,
               id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
             },
-            { autoCommit: false }
+            { autoCommit: true }
           );
 
           const updatedId = updateResult.outBinds?.id?.[0];
@@ -249,7 +249,7 @@ export class NodeGroupServiceDB {
           await conn.execute(
             DELETE_ALL_NODE_GROUP_MEMBERS,
             { nodeGroupId },
-            { autoCommit: false }
+            { autoCommit: true }
           );
 
           // 새 멤버 추가
@@ -258,7 +258,7 @@ export class NodeGroupServiceDB {
               await conn.execute(
                 INSERT_NODE_GROUP_MEMBER,
                 { nodeGroupId, nodeId },
-                { autoCommit: false }
+                { autoCommit: true }
               );
             }
           }

@@ -38,7 +38,7 @@ export class NodeService {
       nodeName: dto.nodeName,
       host: dto.host,
       port: dto.port,
-      nodeStatus: 'active',
+      nodeStatus: 'a',
       createdAt: new Date().toISOString(),
     };
     nodes.push(newNode);
@@ -77,7 +77,7 @@ export class NodeService {
   /**
    * 노드 상태 업데이트
    */
-  static updateNodeStatus(nodeId: number, nodeStatus: 'active' | 'inactive' | 'warning' | 'error'): Node | null {
+  static updateNodeStatus(nodeId: number, nodeStatus: 'a' | 'i' | 'w' | 'e'): Node | null {
     console.log('NodeService updateNodeStatus called with id:', nodeId, 'status:', nodeStatus);
     return this.updateNode(nodeId, { nodeStatus });
   }
@@ -110,7 +110,7 @@ export class NodeService {
   /**
    * 상태별 노드 조회
    */
-  static getNodesByStatus(nodeStatus: 'active' | 'inactive' | 'warning' | 'error'): Node[] {
+  static getNodesByStatus(nodeStatus: 'a' | 'i' | 'w' | 'e'): Node[] {
     return nodes.filter(node => node.nodeStatus === nodeStatus);
   }
 }

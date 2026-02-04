@@ -53,7 +53,7 @@ export interface TestHistory {
   statusCode: number;
   success: 'Y' | 'N'; // DB 원본 값
   responseTimeMs: number;
-  executedAt: Date;
+  executedAt: string;
   input?: string;
   output?: string;
 }
@@ -88,7 +88,7 @@ export function convertTestHistoryToResponse(history: TestHistory): TestHistoryR
     statusCode: history.statusCode,
     success: history.success === 'Y', // 'Y'/'N'을 boolean으로 변환
     responseTimeMs: history.responseTimeMs,
-    executedAt: history.executedAt.toISOString(),
+    executedAt: history.executedAt,
     input: history.input,
     output: history.output,
   };
@@ -117,7 +117,7 @@ export interface UpdateSyntheticTestInput {
 }
 
 export interface CreateTestHistoryInput {
-  syntheticTestId: number;
+  syntheticTestId?: number; // ✅ optional - API 미리보기에서는 null/undefined
   nodeId: number;
   statusCode: number;
   success: 'Y' | 'N';
@@ -206,11 +206,11 @@ export class SyntheticTestServiceDB {
             apiId: data.apiId,
             intervalSeconds: data.intervalSeconds,
             alertThresholdMs: data.alertThresholdMs,
-            tags: data.tags,
+            // tags: data.tags,
             syntheticTestEnabled: data.syntheticTestEnabled || 'Y',
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const syntheticTestId = insertResult.outBinds?.id?.[0];
@@ -271,7 +271,7 @@ export class SyntheticTestServiceDB {
             targetType: data.targetType || existingTest.targetType,
             targetId: data.targetId !== undefined ? data.targetId : existingTest.targetId,
             apiId: data.apiId !== undefined ? data.apiId : existingTest.apiId,
-            tags: data.tags !== undefined ? data.tags : existingTest.tags,
+            // tags: data.tags !== undefined ? data.tags : existingTest.tags,
             intervalSeconds: data.intervalSeconds !== undefined 
               ? data.intervalSeconds 
               : existingTest.intervalSeconds,
@@ -281,7 +281,7 @@ export class SyntheticTestServiceDB {
             syntheticTestEnabled: data.syntheticTestEnabled || existingTest.syntheticTestEnabled,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         // 2. 태그 처리
@@ -363,6 +363,12 @@ export class SyntheticTestServiceDB {
    */
   static async createTestHistory(data: CreateTestHistoryInput): Promise<number> {
     try {
+      // ✅ syntheticTestId가 없으면 저장하지 않음 (API 테스트 실행)
+      if (!data.syntheticTestId || data.syntheticTestId === 0) {
+        console.log('[SyntheticTestService] Skipping history save - no syntheticTestId (preview mode)');
+        return 0;
+      }
+
       const historyId = await db.transaction(async (conn) => {
         console.log('INSERT_TEST_HISTORY:', INSERT_TEST_HISTORY,data);
         const insertResult = await conn.execute(
@@ -377,7 +383,7 @@ export class SyntheticTestServiceDB {
             output: data.output || null,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const historyId = insertResult.outBinds?.id?.[0];
@@ -407,7 +413,7 @@ export class SyntheticTestServiceDB {
       console.log('SELECT_TEST_HISTORY:', SELECT_TEST_HISTORY,syntheticTestId, limit);
       const history = await db.query<TestHistory>(SELECT_TEST_HISTORY, {
         syntheticTestId,
-        limit,
+     //   limit,
       });
 
       return history;
@@ -437,7 +443,7 @@ export class SyntheticTestServiceDB {
         const existingTagResult = await conn.execute(
           SELECT_TAG_BY_NAME,
           { tagName },
-          { autoCommit: false, outFormat: oracledb.OUT_FORMAT_OBJECT }
+          { autoCommit: true, outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
         let tagId: number;
@@ -468,7 +474,7 @@ export class SyntheticTestServiceDB {
           await conn.execute(
             INSERT_SYNTHETIC_TEST_TAG_MEMBER,
             { tagId, syntheticTestId },
-            { autoCommit: false }
+            { autoCommit: true }
           );
           
         } catch (err) {

@@ -75,7 +75,7 @@ const generateSampleTestResults = (nodeId: number, syntheticTestId: number, node
       statusCode: 200,
       success: true,
       responseTimeMs: Math.floor(Math.random() * 300) + 50,
-      executedAt: new Date(now - i * 3600000).toISOString(),
+      executedAt: new Date(now - i * 3600000).toISOString().substring(11, 19).split(':').join(''),
       input: JSON.stringify({ message: `Sample input for ${nodeName}` }),
       output: JSON.stringify({ message: `Sample response from ${nodeName}` }),
     });

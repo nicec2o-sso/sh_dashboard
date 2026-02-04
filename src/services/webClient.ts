@@ -125,10 +125,8 @@ export const WebClient = {
   
   // POST 요청
   post: async <T, B = any>(url: string, data?: B, config?: AxiosRequestConfig): Promise<T> => {
-    console.log('POST111111111111111:', url, data, config);
     const normalizedUrl = normalizeUrl(url, API_BASE_URL);
     const response = await webClient.post<T>(normalizedUrl, data, { ...config, baseURL: undefined });
-    console.log('POST2222222222222222:', response.data);
     return response.data;
   },
 

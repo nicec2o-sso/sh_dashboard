@@ -61,7 +61,7 @@ export interface SyntheticTest {
  * @property statusCode - HTTP 응답 상태 코드
  * @property success - 실행 성공 여부 (DB에서는 'Y' 또는 'N' 값)
  * @property responseTimeMs - 응답 시간 (밀리초)
- * @property executedAt - 실행 일시 (Date 객체)
+ * @property executedAt - 실행 일시 (String 객체)
  * @property input - API 실행 시 전달된 입력 데이터 (JSON 문자열)
  * @property output - API 실행 결과 데이터 (JSON 문자열, 선택)
  * @property errorMessage - 오류 발생 시 오류 메시지 (선택)
@@ -73,7 +73,7 @@ export interface SyntheticTestHistoryRow {
   statusCode: number;
   success: 'Y' | 'N'; // DB에서 반환되는 값
   responseTimeMs: number;
-  executedAt: Date;
+  executedAt: string;
   input: string;
   output?: string;
   errorMessage?: string;
@@ -168,7 +168,7 @@ export function convertSyntheticTestHistoryRow(row: SyntheticTestHistoryRow): Sy
     statusCode: row.statusCode,
     success: row.success === 'Y', // 'Y'/'N'을 boolean으로 변환
     responseTimeMs: row.responseTimeMs,
-    executedAt: row.executedAt.toISOString(),
+    executedAt: row.executedAt,
     input: row.input || '',
     output: row.output,
     errorMessage: row.errorMessage,

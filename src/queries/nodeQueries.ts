@@ -131,7 +131,7 @@ export const SELECT_NODES_BY_STATUS_WITH_TAGS = `
  * 상태별 노드 조회
  * 
  * 파라미터:
- * - :nodeStatus (VARCHAR2): 노드 상태 (active, inactive, warning, error)
+ * - :nodeStatus (VARCHAR2): 노드 상태 (a: active, i: inactive, w: warning, e: error)
  */
 export const SELECT_NODES_BY_STATUS = `
   SELECT 
@@ -228,7 +228,7 @@ export const INSERT_NODE = `
     'system',
     SYSTIMESTAMP,
     '127.0.0.1',
-    'SYSTEM'
+    REGEXP_REPLACE(SYS_GUID(),'([0-9A-F]{8})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{4})([0-9A-F]{12})','\\1\\2\\3-\\4-\\5')
   )
   RETURNING MNG_DOM_NODE_ID INTO :id
 `;

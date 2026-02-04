@@ -20,8 +20,17 @@ export function validateNodeData(data: {
     if (!data.nodeName || data.nodeName.trim() === '') {
       return '노드 이름은 필수 항목입니다.';
     }
-    if (data.nodeName.length > 50) {
-      return '노드 이름은 50자 이하여야 합니다.';
+    if (getByteLength(data.nodeName) > 40) {
+      return '노드 이름은 40바이트 이하여야 합니다.';
+    }
+
+    // 방법 3: 특정 특수문자 포함 (-, _)
+    //const regexWithSpecial = /^[가-힣a-zA-Z0-9\-_]+$/;
+    // 방법 2: 공백 포함
+    const regexWithSpace = /^[가-힣a-zA-Z0-9\s]+$/;
+    
+    if (isValid(data.nodeName, regexWithSpace) === false) {
+      return '노드 이름은 한글, 영문, 숫자, 공백만 사용할 수 있습니다.';
     }
   }
 
@@ -35,7 +44,7 @@ export function validateNodeData(data: {
     }
     // 간단한 호스트 형식 검증
     // const hostPattern = /^[a-zA-Z0-9.-]+$/;
-    const hostPattern = /^(\/[a-zA-Z0-9._~%!$&'()*+,;=:@-]*)+$/; // 김병규님 요청으로 변경처리 1.16일
+    const hostPattern = /^([a-zA-Z0-9._~%!$&'()*+,;=:@-]*)+$/; // 김병규님 요청으로 변경처리 1.16일
     if (!hostPattern.test(data.host)) {
       return '올바른 호스트 형식이 아닙니다 (예: example.com, 192.168.1.1)';
     }
@@ -67,6 +76,10 @@ export function validateNodeData(data: {
     if (tagArray[0] !== '' && tagArray.some(t => t.length === 0)) {
       return '태그에 빈 값이 포함되어 있습니다.';
     }
+    // 태그명 BITE 길이 검증
+    if (tagArray[0] !== '' && tagArray.some(t => getByteLength(t) > 20)) {
+      return '태그는 20바이트 이하여야 합니다.';
+    }
   }
 
   return null;
@@ -85,8 +98,13 @@ export function validateNodeGroupData(data: {
     if (!data.nodeGroupName || data.nodeGroupName.trim() === '') {
       return '그룹 이름은 필수 항목입니다.';
     }
-    if (data.nodeGroupName.length > 50) {
-      return '그룹 이름은 50자 이하여야 합니다.';
+    if (getByteLength(data.nodeGroupName) > 40) {
+      return '그룹 이름은 40바이트 이하여야 합니다.';
+    }
+
+    const regexWithSpace = /^[가-힣a-zA-Z0-9\s]+$/;
+    if (isValid(data.nodeGroupName, regexWithSpace) === false) {
+      return '그룹 이름은 한글, 영문, 숫자, 공백만 사용할 수 있습니다.';
     }
   }
 
@@ -123,8 +141,12 @@ export function validateApiData(data: {
     if (!data.apiName || data.apiName.trim() === '') {
       return 'API 이름은 필수 항목입니다.';
     }
-    if (data.apiName.length > 50) {
-      return 'API 이름은 50자 이하여야 합니다.';
+    if (getByteLength(data.apiName) > 40) {
+      return 'API 이름은 40바이트 이하여야 합니다.';
+    }
+    const regexWithSpace = /^[가-힣a-zA-Z0-9\s]+$/;
+    if (isValid(data.apiName, regexWithSpace) === false) {
+      return 'API 이름은 한글, 영문, 숫자, 공백만 사용할 수 있습니다.';
     }
   }
 
@@ -164,6 +186,10 @@ export function validateApiData(data: {
     if (tagArray[0] !== '' && tagArray.some(t => t.length === 0)) {
       return '태그에 빈 값이 포함되어 있습니다.';
     }
+    // 태그명 BITE 길이 검증
+    if (tagArray[0] !== '' && tagArray.some(t => getByteLength(t) > 20)) {
+      return '태그는 20바이트 이하여야 합니다.';
+    }
   }
 
   // 파라미터 검증
@@ -197,8 +223,8 @@ export function validateApiParameterData(param: {
   if (!param.apiParameterName || param.apiParameterName.trim() === '') {
     return '파라미터 이름은 필수 항목입니다.';
   }
-  if (param.apiParameterName.length > 40) {
-    return '파라미터 이름은 40자 이하여야 합니다.';
+  if (getByteLength(param.apiParameterName) > 20) {
+    return '파라미터 이름은 20바이트 이하여야 합니다.';
   }
 
   // 파라미터 타입 검증
@@ -244,8 +270,12 @@ export function validateSyntheticTestData(data: {
     if (!data.syntheticTestName || data.syntheticTestName.trim() === '') {
       return '테스트 이름은 필수 항목입니다.';
     }
-    if (data.syntheticTestName.length > 50) {
-      return '테스트 이름은 50자 이하여야 합니다.';
+    if (getByteLength(data.syntheticTestName) > 40) {
+      return '테스트 이름은 40바이트 이하여야 합니다.';
+    }
+    const regexWithSpace = /^[가-힣a-zA-Z0-9\s]+$/;
+    if (isValid(data.syntheticTestName, regexWithSpace) === false) {
+      return '테스트 이름은 한글, 영문, 숫자, 공백만 사용할 수 있습니다.';
     }
   }
 
@@ -304,7 +334,19 @@ export function validateSyntheticTestData(data: {
     if (tagArray[0] !== '' && tagArray.some(t => t.length === 0)) {
       return '태그에 빈 값이 포함되어 있습니다.';
     }
+    // 태그명 BITE 길이 검증
+    if (tagArray[0] !== '' && tagArray.some(t => getByteLength(t) > 20)) {
+      return '태그는 20바이트 이하여야 합니다.';
+    }
   }
 
   return null;
+}
+
+function getByteLength(str: string, encoding: BufferEncoding = 'utf8') {
+  return Buffer.byteLength(str, encoding);
+}
+
+function isValid(str: string, regex: RegExp): boolean {
+  return regex.test(str);
 }

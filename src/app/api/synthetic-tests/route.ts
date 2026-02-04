@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
         intervalSeconds: body.intervalSeconds,
         alertThresholdMs: body.alertThresholdMs,
         syntheticTestEnabled: body.syntheticTestEnabled,
-        apiParameterValues: body.apiParameterValues,
         tags: body.tags,
       });
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,8 @@ interface TestHistory {
 }
 
 interface SearchParams {
+  syntheticTestId?: number;
+  nodeId?: number;
   nodeName?: string;
   nodeGroupName?: string;
   tagName?: string;
@@ -40,11 +43,11 @@ interface TestHistoryDetailProps {
 }
 
 export function TestHistoryDetail({ initialTestId }: TestHistoryDetailProps = {}) {
+  const urlSearchParams = useSearchParams();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [histories, setHistories] = useState<TestHistory[]>([]);
   const [total, setTotal] = useState(0);
-  
-  const [isMasterDataLoaded, setIsMasterDataLoaded] = useState(false);
   
   // 검색 파라미터
   const [searchParams, setSearchParams] = useState<SearchParams>({});
@@ -53,11 +56,36 @@ export function TestHistoryDetail({ initialTestId }: TestHistoryDetailProps = {}
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // ✅ URL 파라미터에서 초기값 설정
+  useEffect(() => {
+    const syntheticTestId = urlSearchParams.get('syntheticTestId');
+    const nodeId = urlSearchParams.get('nodeId');
+    const nodeName = urlSearchParams.get('nodeName');
+    
+    if (syntheticTestId || nodeId || nodeName) {
+      setSearchParams({
+        syntheticTestId: syntheticTestId ? Number(syntheticTestId) : undefined,
+        nodeId: nodeId ? Number(nodeId) : undefined,
+        nodeName: nodeName || undefined,
+      });
+    }
+  }, [urlSearchParams]);
+
   // 히스토리 검색
   const searchHistories = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
+      
+      // ✅ syntheticTestId로 필터링
+      if (searchParams.syntheticTestId) {
+        params.append('syntheticTestId', searchParams.syntheticTestId.toString());
+      }
+      
+      // ✅ nodeId로 필터링
+      if (searchParams.nodeId) {
+        params.append('nodeId', searchParams.nodeId.toString());
+      }
       
       if (searchParams.nodeGroupName) {
         params.append('nodeGroupName', searchParams.nodeGroupName);
@@ -139,22 +167,12 @@ export function TestHistoryDetail({ initialTestId }: TestHistoryDetailProps = {}
     }
   }, [searchParams, currentPage, itemsPerPage]);
   
-  // initialTestId가 변경되면 검색 파라미터 업데이트
+  // ✅ searchParams가 설정되면 자동으로 검색
   useEffect(() => {
-    if (initialTestId) {
-      setSearchParams(prev => ({
-        ...prev,
-        syntheticTestId: initialTestId,
-      }));
-    }
-  }, [initialTestId]);
-
-  // initialTestId가 있으면 자동 검색
-  useEffect(() => {
-    if (initialTestId && histories.length === 0) {
+    if (searchParams.syntheticTestId || searchParams.nodeId || searchParams.nodeName) {
       searchHistories();
     }
-  }, [initialTestId]);
+  }, [searchParams.syntheticTestId, searchParams.nodeId]);
 
   // 페이지 변경 시 검색 (검색 결과가 있을 때만)
   useEffect(() => {
@@ -291,6 +309,8 @@ export function TestHistoryDetail({ initialTestId }: TestHistoryDetailProps = {}
               <CardTitle>검색 결과</CardTitle>
               <CardDescription>
                 총 {total}건
+                {searchParams.syntheticTestId && ` (테스트 ID: ${searchParams.syntheticTestId})`}
+                {searchParams.nodeId && ` (노드 ID: ${searchParams.nodeId})`}
               </CardDescription>
             </div>
             {/* 페이지당 항목 수 선택 */}

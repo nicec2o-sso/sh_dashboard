@@ -85,6 +85,11 @@ export class SyntheticTestHistoryServiceDB {
    */
   static async createHistory(data: CreateTestHistoryInput): Promise<number> {
     try {
+      // ✅ syntheticTestId가 없으면 저장하지 않음 (API 테스트 실행)
+      if (!data.syntheticTestId || data.syntheticTestId === 0) {
+        console.log('[SyntheticTestService] Skipping history save - no syntheticTestId (preview mode)');
+        return 0;
+      }
       const historyId = await db.transaction(async (conn) => {
         console.log('INSERT_TEST_HISTORY : ',INSERT_TEST_HISTORY, data);
         
@@ -100,7 +105,7 @@ export class SyntheticTestHistoryServiceDB {
             output: data.output || null,
             id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           },
-          { autoCommit: false }
+          { autoCommit: true }
         );
 
         const historyId = insertResult.outBinds?.id?.[0];
@@ -137,7 +142,7 @@ export class SyntheticTestHistoryServiceDB {
           nodeId: options?.nodeId || null,
           startDate: options?.startDate || null,
           endDate: options?.endDate || null,
-          limit: options?.limit || 100,
+          // limit: options?.limit || 100,
         }
       );
 
@@ -186,7 +191,7 @@ export class SyntheticTestHistoryServiceDB {
       
       // Synthetic Test ID 필터
       if (options.syntheticTestId) {
-        where += ` AND h.MPG_MNG_DOM_SYNT_TEST_ID = :syntheticTestId`;
+        where += ` AND h.MNG_DOM_SYNT_TEST_ID = :syntheticTestId`;
         bindParams.syntheticTestId = options.syntheticTestId;
       }
       
@@ -239,17 +244,17 @@ export class SyntheticTestHistoryServiceDB {
       
       // 날짜 범위 필터
       if (options.startDate) {
-        where += ` AND h.MNG_DOM_SYNT_TEST_EXE_TM >= :startDate`;
+        where += ` AND h.REG_DDTS >= :startDate`;
         bindParams.startDate = options.startDate;
       }
       
       if (options.endDate) {
-        where += ` AND h.MNG_DOM_SYNT_TEST_EXE_TM <= :endDate`;
+        where += ` AND h.REG_DDTS <= :endDate`;
         bindParams.endDate = options.endDate;
       }
       
       // 정렬: 최신순
-      where += ` ORDER BY h.MNG_DOM_SYNT_TEST_EXE_TM DESC`;
+      where += ` ORDER BY h.REG_DDTS DESC`;
       
       sql += where;
 
@@ -359,7 +364,7 @@ export class SyntheticTestHistoryServiceDB {
         SELECT_ALERTS,
         {
           startDate,
-          limit,
+        //  limit,
         }
       );
 

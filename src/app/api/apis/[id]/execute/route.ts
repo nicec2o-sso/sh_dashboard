@@ -51,7 +51,7 @@ export async function POST(
         apiId: apiId,
         apiName: api.apiName,
         parameters: parsedParams,
-        executedAt: new Date().toISOString(),
+        executedAt: new Date().toISOString().substring(11, 19).split(':').join(''),
         results,
       },
     }, { status: results.statusCode });
