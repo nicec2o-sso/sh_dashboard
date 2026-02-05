@@ -34,6 +34,7 @@ export class ApiService {
       apiName: data.apiName,
       uri: data.uri,
       method: data.method,
+      tags: '',
       apiParameterIds: parameterIds,
     };
 
@@ -47,7 +48,8 @@ export class ApiService {
       parameters: { 
           targetNode: { nodeId: number, host: string, port: number, nodeName: string }, 
           parsedParams: Record<string, any>,
-          syntheticTestId?: number
+          syntheticTestId?: number,
+          clientIp?: string
       }
   ): Promise<ApiExecutionResult> {
       console.log('ApiService executeApi called with apiId:', apiId, 'parameters:', parameters);
@@ -194,6 +196,7 @@ export class ApiService {
               responseTimeMs: result.responseTimeMs,
               input,
               output: JSON.stringify(result.data),
+              clientIp: parameters.clientIp || '0.0.0.0',
           });
 
           return result;
@@ -223,6 +226,7 @@ export class ApiService {
                   responseTimeMs: result.responseTimeMs,
                   input,
                   output: errorMessage,
+                  clientIp: parameters.clientIp || '0.0.0.0',
               });
           } catch (saveError) {
               console.error('히스토리 저장 중 오류:', saveError);

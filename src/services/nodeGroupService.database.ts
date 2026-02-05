@@ -161,7 +161,7 @@ export class NodeGroupServiceDB {
           { autoCommit: true }
         );
 
-        const nodeGroupId = insertResult.outBinds?.id?.[0];
+        const nodeGroupId = (insertResult.outBinds as any)?.id?.[0] as number;
         if (!nodeGroupId) {
           throw new Error('Failed to get generated node group ID');
         }
@@ -237,7 +237,7 @@ export class NodeGroupServiceDB {
             { autoCommit: true }
           );
 
-          const updatedId = updateResult.outBinds?.id?.[0];
+          const updatedId = (updateResult.outBinds as any)?.id?.[0] as number;
           if (!updatedId) {
             throw new Error('Failed to update node group');
           }

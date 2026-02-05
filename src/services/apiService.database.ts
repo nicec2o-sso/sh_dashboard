@@ -197,7 +197,7 @@ export class ApiServiceDB {
           { autoCommit: true }
         );
 
-        const apiId = insertResult.outBinds?.id?.[0];
+        const apiId = (insertResult.outBinds as any)?.id?.[0] as number;
         if (!apiId) {
           throw new Error('Failed to get generated API ID');
         }
@@ -206,7 +206,7 @@ export class ApiServiceDB {
 
         // 2. 태그 처리
         if (data.tags && data.tags.trim()) {
-          await this.processApiTagsInTransaction(conn, apiId, data.tags);
+          await this.processApiTagsInTransaction(conn, apiId, data.tags, data.clientIp);
         }
 
         // 3. 파라미터 추가
@@ -419,7 +419,7 @@ export class ApiServiceDB {
             { autoCommit: true }
           );
 
-          tagId = insertTagResult.outBinds?.id?.[0];
+          tagId = (insertTagResult.outBinds as any)?.id?.[0] as number;
           if (!tagId) {
             throw new Error(`Failed to create tag: ${tagName}`);
           }

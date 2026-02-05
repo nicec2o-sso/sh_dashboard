@@ -103,7 +103,7 @@ export function SyntheticTestPanel() {
         // 각 테스트의 tags가 없으면 빈 배열로 초기화
         const sanitizedTests = (loadedTests as SyntheticTest[]).map(test => ({
           ...test,
-          tags: test.tags || []
+          tags: test.tags || ''
         }));
         setTests(sanitizedTests);
 

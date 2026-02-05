@@ -18,7 +18,7 @@ let syntheticTests: SyntheticTest[] = [
     targetId: 1, 
     targetType: 'node',
     apiId: 1, 
-    tags: ['production', 'critical'], 
+    tags: 'production,critical', 
     intervalSeconds: 60, 
     alertThresholdMs: 100,
     createdAt: new Date().toISOString(),
@@ -29,7 +29,7 @@ let syntheticTests: SyntheticTest[] = [
     targetId: 3, 
     targetType: 'group',
     apiId: 3, 
-    tags: ['database', 'OpenSource', 'production'], 
+    tags: 'database,OpenSource,production', 
     intervalSeconds: 300, 
     alertThresholdMs: 100,
     createdAt: new Date().toISOString(),
@@ -40,7 +40,7 @@ let syntheticTests: SyntheticTest[] = [
     targetId: 3, 
     targetType: 'group',
     apiId: 3, 
-    tags: ['database', 'OpenSource', 'production'], 
+    tags: 'database,OpenSource,production', 
     intervalSeconds: 300, 
     alertThresholdMs: 100,
     createdAt: new Date().toISOString(),
@@ -51,7 +51,7 @@ let syntheticTests: SyntheticTest[] = [
     targetId: 3, 
     targetType: 'group',
     apiId: 3, 
-    tags: ['database', 'OpenSource', 'production'], 
+    tags: 'database,OpenSource,production', 
     apiParameterValues: {3:"value1", 4:"value2"},
     intervalSeconds: 300, 
     alertThresholdMs: 100,
@@ -126,7 +126,7 @@ export class SyntheticTestService {
       targetType: dto.targetType,
       targetId: dto.targetId,
       apiId: dto.apiId,
-      tags: dto.tags,
+      tags: Array.isArray(dto.tags) ? dto.tags.join(',') : dto.tags,
       intervalSeconds: dto.intervalSeconds,
       alertThresholdMs: dto.alertThresholdMs,
       createdAt: new Date().toISOString(),
@@ -152,6 +152,7 @@ export class SyntheticTestService {
     syntheticTests[testIndex] = {
       ...syntheticTests[testIndex],
       ...dto,
+      tags: Array.isArray(dto.tags) ? dto.tags.join(',') : (dto.tags || ''),
     };
 
     return syntheticTests[testIndex];

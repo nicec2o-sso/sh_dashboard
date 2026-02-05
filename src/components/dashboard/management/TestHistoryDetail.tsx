@@ -141,10 +141,11 @@ export function TestHistoryDetail({ initialTestId }: TestHistoryDetailProps = {}
         console.log('[TestHistoryDetail] Current page:', currentPage, 'Items per page:', itemsPerPage);
         
         // 중복 제거 (혹시 모를 경우를 대비)
-        const uniqueHistories = data.data ? 
-          Array.from(new Map(data.data.map((h: TestHistory) => [h.syntheticTestHistoryId, h])).values()) 
-          : [];
-        
+        const uniqueHistories: TestHistory[] = Array.from(
+          new Map(
+            [...histories, ...data.data].map(item => [item.id, item])
+          ).values()
+        );
         if (uniqueHistories.length !== data.data?.length) {
           console.warn('[TestHistoryDetail] Removed duplicates:', data.data?.length, '->', uniqueHistories.length);
         }

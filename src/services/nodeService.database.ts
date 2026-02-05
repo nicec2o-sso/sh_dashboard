@@ -167,7 +167,7 @@ export class NodeServiceDB {
           { autoCommit: true }
         );
 
-        const nodeId = insertResult.outBinds?.id?.[0];
+        const nodeId = (insertResult.outBinds as any)?.id?.[0] as number;
         if (!nodeId) {
           throw new Error('Failed to get generated node ID');
         }
@@ -242,7 +242,7 @@ export class NodeServiceDB {
           { autoCommit: true }
         );
 
-        const updatedId = updateResult.outBinds?.updatedId?.[0];
+        const updatedId = (updateResult.outBinds as any)?.updatedId?.[0] as number;
         if (!updatedId) {
           throw new Error('Failed to update node');
         }
@@ -253,7 +253,7 @@ export class NodeServiceDB {
           await conn.execute(DELETE_NODE_TAG_MEMBERS, { nodeId }, { autoCommit: true });
 
           if (data.tags && data.tags.trim()) {
-            await this.processNodeTagsInTransaction(conn, nodeId, data.tags);
+            await this.processNodeTagsInTransaction(conn, nodeId, data.tags, data.clientIp);
           }
         }
       });
@@ -343,7 +343,7 @@ export class NodeServiceDB {
             { autoCommit: true }
           );
 
-          tagId = insertTagResult.outBinds?.id?.[0];
+          tagId = (insertTagResult.outBinds as any)?.id?.[0] as number;
           if (!tagId) {
             throw new Error(`Failed to create tag: ${tagName}`);
           }

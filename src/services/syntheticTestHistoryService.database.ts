@@ -110,7 +110,7 @@ export class SyntheticTestHistoryServiceDB {
           { autoCommit: true }
         );
 
-        const historyId = insertResult.outBinds?.id?.[0];
+        const historyId = (insertResult.outBinds as any)?.id?.[0] as number;
         if (!historyId) {
           throw new Error('Failed to get generated history ID');
         }

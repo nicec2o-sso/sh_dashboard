@@ -217,7 +217,7 @@ export class SyntheticTestServiceDB {
           { autoCommit: true }
         );
 
-        const syntheticTestId = insertResult.outBinds?.id?.[0];
+        const syntheticTestId = (insertResult.outBinds as any)?.id?.[0] as number;
         if (!syntheticTestId) {
           throw new Error('Failed to get generated synthetic test ID');
         }
@@ -299,7 +299,7 @@ export class SyntheticTestServiceDB {
           }
         }
 
-        const updatedId = updateResult.outBinds?.id?.[0];
+        const updatedId = (updateResult.outBinds as any)?.id?.[0] as number;
         if (!updatedId) {
           throw new Error('Failed to update synthetic test');
         }
@@ -392,7 +392,7 @@ export class SyntheticTestServiceDB {
           { autoCommit: true }
         );
 
-        const historyId = insertResult.outBinds?.id?.[0];
+        const historyId = (insertResult.outBinds as any)?.id?.[0] as number;
         if (!historyId) {
           throw new Error('Failed to get generated history ID');
         }
@@ -470,7 +470,7 @@ export class SyntheticTestServiceDB {
             { autoCommit: true }
           );
 
-          tagId = insertTagResult.outBinds?.id?.[0];
+          tagId = (insertTagResult.outBinds as any)?.id?.[0] as number;
           if (!tagId) {
             throw new Error(`Failed to create tag: ${tagName}`);
           }

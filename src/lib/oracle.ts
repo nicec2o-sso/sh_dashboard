@@ -328,9 +328,8 @@ class OracleConnection {
       
       const result = await connection.execute(sql, params, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
-        autoCommit: options?.autoCommit !== undefined ? options.autoCommit : true,
-        bindDefs: { id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } }
-      });
+        autoCommit: options?.autoCommit !== undefined ? options.autoCommit : true
+      } as any);
 
       const returningResult: ReturningResult<T> = {
         rowsAffected: result.rowsAffected || 0,

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/layout/Header';
 import { Sidebar } from '@/components//dashboard/layout/Sidebar';
@@ -9,7 +9,7 @@ import { NodeManagementTab } from '@/components/dashboard/tabs/NodeManagementTab
 import { ApiManagementTab } from '@/components/dashboard/tabs/ApiManagementTab';
 import { TestHistoryTab } from '@/components/dashboard/tabs/TestHistoryTab';
 
-export default function MonitoringDashboard() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -49,5 +49,13 @@ export default function MonitoringDashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function MonitoringDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
